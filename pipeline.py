@@ -36,6 +36,9 @@ from corpus.db import initialise_db, db_session, get_corpus_stats
 from corpus.search import collect_repos_for_language, collect_all_languages
 from corpus.cloner import clone_pending_repos
 from corpus.extractor import extract_all_cloned
+from corpus.classifier import classify_all
+from corpus.exporter import export_dataset
+from corpus.validator import generate_sample, compute_metrics
 
 # ---------------------------------------------------------------------------
 # Logging setup
@@ -80,9 +83,12 @@ def cmd_search(args):
 
 
 def cmd_clone(args):
+    # batch=None means "process all pending repos"
+    # batch=N means "process at most N repos this run" (incremental mode)
+    batch = getattr(args, "batch", None)
     summary = clone_pending_repos(
         language=args.language,
-        batch_size=args.batch or CLONE_BATCH_SIZE,
+        batch_size=batch,
     )
     print(f"✓ Clone batch done: {summary}")
 
@@ -101,13 +107,46 @@ def cmd_run(args):
     cmd_search(args)
 
     print("\n── Phase 2: Clone repositories ─────────────────────")
+    # Override batch to None so ALL discovered repos are cloned, not just
+    # the default batch of 50. The --batch flag on `run` is intentionally
+    # removed — use `clone --batch N` for incremental operation instead.
+    args.batch = None
     cmd_clone(args)
 
     print("\n── Phase 3: Extract fixtures ───────────────────────")
     cmd_extract(args)
 
+    print("\n── Phase 4: Classify domains ───────────────────────")
+    args.overwrite = False
+    cmd_classify(args)
+
     print("\n── Done ─────────────────────────────────────────────")
     cmd_stats(args)
+
+
+def cmd_classify(args):
+    counts = classify_all(overwrite=args.overwrite)
+    print(f"✓ Domain classification done: {counts}")
+
+
+def cmd_export(args):
+    zip_path = export_dataset(
+        version=args.version,
+        include_raw_source=args.include_source,
+    )
+    print(f"✓ Dataset exported to: {zip_path}")
+
+
+def cmd_validate(args):
+    if args.compute:
+        from pathlib import Path
+        results = compute_metrics(Path(args.compute))
+        if results:
+            print("✓ Metrics computed. See output above.")
+    else:
+        out = generate_sample(n_per_language=args.sample)
+        if out:
+            print(f"✓ Sample written to: {out}")
 
 
 def cmd_stats(args):
@@ -166,7 +205,25 @@ def build_parser() -> argparse.ArgumentParser:
                        help="Limit to one language")
     p_run.add_argument("--max", type=int, default=None,
                        help="Max repos per language to search")
-    p_run.add_argument("--batch", type=int, default=CLONE_BATCH_SIZE)
+
+    # classify
+    p_classify = sub.add_parser("classify", help="Label repo domains (web/cli/data/…)")
+    p_classify.add_argument("--overwrite", action="store_true",
+                            help="Re-classify already-labelled repos")
+
+    # export
+    p_export = sub.add_parser("export", help="Export dataset for Zenodo deposit")
+    p_export.add_argument("--version", default="1.0", help="Version string (default: 1.0)")
+    p_export.add_argument("--include-source", action="store_true",
+                          help="Include raw_source column in fixtures CSV")
+
+    # validate
+    p_validate = sub.add_parser("validate",
+                                 help="Sample fixtures for manual precision/recall validation")
+    p_validate.add_argument("--sample", type=int, default=50,
+                             help="Fixtures to sample per language (default: 50)")
+    p_validate.add_argument("--compute", metavar="CSV",
+                             help="Path to a completed validation CSV — compute metrics")
 
     # stats
     sub.add_parser("stats", help="Print corpus statistics")
@@ -179,12 +236,15 @@ def build_parser() -> argparse.ArgumentParser:
 # ---------------------------------------------------------------------------
 
 COMMAND_MAP = {
-    "init":    cmd_init,
-    "search":  cmd_search,
-    "clone":   cmd_clone,
-    "extract": cmd_extract,
-    "run":     cmd_run,
-    "stats":   cmd_stats,
+    "init":     cmd_init,
+    "search":   cmd_search,
+    "clone":    cmd_clone,
+    "extract":  cmd_extract,
+    "classify": cmd_classify,
+    "export":   cmd_export,
+    "validate": cmd_validate,
+    "run":      cmd_run,
+    "stats":    cmd_stats,
 }
 
 if __name__ == "__main__":

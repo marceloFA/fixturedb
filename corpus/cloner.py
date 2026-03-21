@@ -163,17 +163,23 @@ def _count_test_files(repo_dir: Path, config) -> int:
 # ---------------------------------------------------------------------------
 
 def clone_pending_repos(language: str | None = None,
-                        batch_size: int = 50) -> dict:
+                        batch_size: int | None = None) -> dict:
     """
     Clone all repos in 'discovered' status (optionally filtered by language).
     Uses a thread pool for parallel cloning.
+
+    batch_size controls how many repos are processed in this call:
+      - None (default): process ALL pending repos — used by `run`
+      - int N: process at most N repos — used by `clone --batch N`
+        for incremental / resumable collection
+
     Returns a summary dict.
     """
     with db_session() as conn:
         rows = get_repos_by_status(conn, "discovered")
         if language:
             rows = [r for r in rows if r["language"] == language]
-        batch = list(rows)[:batch_size]
+        batch = list(rows) if batch_size is None else list(rows)[:batch_size]
 
     if not batch:
         logger.info("No repos in 'discovered' status to clone.")
