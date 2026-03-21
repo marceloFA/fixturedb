@@ -55,6 +55,7 @@ def _find_test_files(repo_dir: Path, language: str) -> list[Path]:
         ".svg", ".png", ".jpg", ".jpeg", ".gif", ".ico",
         ".woff", ".woff2", ".ttf", ".eot", ".map",
         ".lock", ".log", ".tmp",
+        ".mod", ".sum",  # Go dependency files
     }
 
     test_files: list[Path] = []
