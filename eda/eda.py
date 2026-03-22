@@ -31,7 +31,7 @@ warnings.filterwarnings("ignore")
 # Paths
 # ---------------------------------------------------------------------------
 
-ROOT = Path(__file__).parent
+ROOT = Path(__file__).parent.parent
 DB_PATH = ROOT / "data" / "corpus.db"
 DEFAULT_OUT = ROOT / "output" / "eda"
 

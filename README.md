@@ -67,3 +67,47 @@ and mock framework usage.
 first cross-language resource treating the fixture as its primary unit of analysis.
 
 See [docs/01-intro.md](docs/01-intro.md) for the full overview.
+
+---
+
+## Exploratory Data Analysis (EDA)
+
+The following visualizations provide an overview of the FixtureDB corpus:
+
+### Corpus Overview
+
+**Repository Distribution and Pipeline Status**
+
+![Repositories by Tier](docs/plots/01a_repos_by_tier.png)
+
+![Pipeline Status](docs/plots/01b_pipeline_status.png)
+
+**Star Distribution (Log Scale)**
+
+![Star Distribution Ridge Plot](docs/plots/02_star_distribution.png)
+
+**Repository Timeline and Activity**
+
+![Repository Creation Timeline](docs/plots/03a_repos_creation_timeline.png)
+
+![Repository Recent Activity](docs/plots/03b_repos_activity.png)
+
+**Domain Distribution and Popularity**
+
+![Domain Distribution](docs/plots/04_domain_distribution.png)
+
+![Stars vs Forks Correlation](docs/plots/05_stars_vs_forks.png)
+
+### Fixture Analysis
+
+**Fixture Distribution and Types**
+
+![Fixture Distribution per Repository](docs/plots/06a_fixture_distribution.png)
+
+![Fixture Type Breakdown](docs/plots/06b_fixture_types.png)
+
+**Mocking Practices**
+
+![Mock Usage Prevalence](docs/plots/07a_mock_prevalence.png)
+
+![Mocking Framework Usage](docs/plots/07b_framework_usage.png)
