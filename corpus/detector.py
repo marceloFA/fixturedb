@@ -270,11 +270,13 @@ def _detect_python(tree, src_bytes: bytes) -> list[FixtureResult]:
                     )
                     break
 
-        # unittest setUp/tearDown inside TestCase subclass
+        # unittest setUp/tearDown inside TestCase subclass and setup_method/teardown_method
         elif node.type == "function_definition":
             name_node = node.child_by_field_name("name")
             if name_node:
                 name = _source(name_node, src_bytes)
+                
+                # unittest-style fixtures: setUp/tearDown/setUpClass/tearDownClass/setUpModule/tearDownModule
                 if name in (
                     "setUp",
                     "tearDown",
@@ -299,6 +301,46 @@ def _detect_python(tree, src_bytes: bytes) -> list[FixtureResult]:
                             scope=scope,
                         )
                     )
+                
+                # TestCase method style (setup_method/teardown_method)
+                elif name in (
+                    "setup_method",
+                    "teardown_method",
+                    "setup_class",
+                    "teardown_class",
+                ):
+                    scope = (
+                        "per_class"
+                        if name in ("setup_class", "teardown_class")
+                        else "per_test"
+                    )
+                    results.append(
+                        _build_result(
+                            node=node,
+                            func_node=node,
+                            src_bytes=src_bytes,
+                            fixture_type="pytest_class_method",
+                            scope=scope,
+                        )
+                    )
+                
+                # Nose-style fixtures: setup/teardown/setup_module/teardown_module
+                elif name in (
+                    "setup",
+                    "teardown",
+                    "setup_module",
+                    "teardown_module",
+                ):
+                    scope = "per_module" if "module" in name else "per_test"
+                    results.append(
+                        _build_result(
+                            node=node,
+                            func_node=node,
+                            src_bytes=src_bytes,
+                            fixture_type="nose_fixture",
+                            scope=scope,
+                        )
+                    )
 
         for child in node.children:
             visit(child)
@@ -320,6 +362,12 @@ JUNIT_FIXTURE_ANNOTATIONS = {
     "@BeforeClass": ("junit4_before_class", "per_class"),
     "@After": ("junit4_after", "per_test"),
     "@AfterClass": ("junit4_after_class", "per_class"),
+    "@BeforeMethod": ("testng_before_method", "per_test"),  # TestNG
+    "@BeforeClass": ("testng_before_class", "per_class"),  # TestNG (same name as JUnit4, handled specially)
+    "@AfterMethod": ("testng_after_method", "per_test"),  # TestNG
+    "@AfterClass": ("testng_after_class", "per_class"),  # TestNG
+    "@Rule": ("junit_rule", "per_test"),  # JUnit @Rule fixture fields
+    "@ClassRule": ("junit_class_rule", "per_class"),  # JUnit @ClassRule fixture fields
 }
 
 
@@ -328,15 +376,69 @@ def _detect_java(tree, src_bytes: bytes) -> list[FixtureResult]:
 
     def visit(node):
         if node.type == "method_declaration":
-            annotations = [
-                _source(c, src_bytes).strip()
-                for c in node.children
-                if c.type == "marker_annotation" or c.type == "annotation"
-            ]
+            # Annotations in Java are inside the modifiers node
+            annotations = []
+            for c in node.children:
+                if c.type == "modifiers":
+                    # Look for marker_annotation or annotation inside modifiers
+                    for mod_child in c.children:
+                        if mod_child.type == "marker_annotation" or mod_child.type == "annotation":
+                            annotations.append(_source(mod_child, src_bytes).strip())
+            
+            # Also check for direct annotation children (fallback)
+            for c in node.children:
+                if c.type == "marker_annotation" or c.type == "annotation":
+                    annotations.append(_source(c, src_bytes).strip())
+            
             for ann in annotations:
                 # Strip parameter content for lookup
                 ann_key = "@" + ann.lstrip("@").split("(")[0].strip()
                 if ann_key in JUNIT_FIXTURE_ANNOTATIONS:
+                    fixture_type, scope = JUNIT_FIXTURE_ANNOTATIONS[ann_key]
+                    results.append(
+                        _build_result(
+                            node=node,
+                            func_node=node,
+                            src_bytes=src_bytes,
+                            fixture_type=fixture_type,
+                            scope=scope,
+                        )
+                    )
+                    break
+            
+            # JUnit 3 style: setUp() / tearDown() methods (no annotations, in TestCase subclass)
+            # These are plain methods with specific names, not indicated by annotations
+            name_node = node.child_by_field_name("name")
+            if name_node:
+                method_name = _source(name_node, src_bytes).strip()
+                if method_name in ("setUp", "tearDown"):
+                    # Check if not already matched by annotation
+                    has_annotation = any(ann for ann in annotations if "@Before" in ann or "@After" in ann)
+                    if not has_annotation:
+                        scope = "per_test"
+                        fixture_type = "junit3_setup" if method_name == "setUp" else "junit3_teardown"
+                        results.append(
+                            _build_result(
+                                node=node,
+                                func_node=node,
+                                src_bytes=src_bytes,
+                                fixture_type=fixture_type,
+                                scope=scope,
+                            )
+                        )
+        
+        # Handle @Rule and @ClassRule field declarations
+        elif node.type == "field_declaration":
+            annotations = []
+            for c in node.children:
+                if c.type == "modifiers":
+                    for mod_child in c.children:
+                        if mod_child.type == "marker_annotation" or mod_child.type == "annotation":
+                            annotations.append(_source(mod_child, src_bytes).strip())
+            
+            for ann in annotations:
+                ann_key = "@" + ann.lstrip("@").split("(")[0].strip()
+                if ann_key in ("@Rule", "@ClassRule"):
                     fixture_type, scope = JUNIT_FIXTURE_ANNOTATIONS[ann_key]
                     results.append(
                         _build_result(
@@ -365,8 +467,8 @@ JS_FIXTURE_CALLS = {
     "beforeAll": ("before_all", "per_class"),
     "afterEach": ("after_each", "per_test"),
     "afterAll": ("after_all", "per_class"),
-    "before": ("mocha_before", "per_test"),
-    "after": ("mocha_after", "per_test"),
+    "before": ("mocha_before", "per_test"),  # default to per_test for ambiguous mocha hooks
+    "after": ("mocha_after", "per_test"),  # default to per_test for ambiguous mocha hooks
 }
 
 
@@ -414,6 +516,10 @@ CSHARP_FIXTURE_ATTRIBUTES = {
     "TearDown": ("nunit_teardown", "per_test"),
     "OneTimeSetUp": ("nunit_onetimesetup", "per_class"),
     "OneTimeTearDown": ("nunit_onetimeteardown", "per_class"),
+    "TestInitialize": ("mstest_initialize", "per_test"),  # MSTest
+    "TestCleanup": ("mstest_cleanup", "per_test"),  # MSTest
+    "ClassInitialize": ("mstest_class_initialize", "per_class"),  # MSTest
+    "ClassCleanup": ("mstest_class_cleanup", "per_class"),  # MSTest
     "Fact": ("xunit_fact", "per_test"),
     "Theory": ("xunit_theory", "per_test"),
 }
@@ -467,7 +573,9 @@ def _detect_go(tree, src_bytes: bytes) -> list[FixtureResult]:
     Go has no formal fixture annotation. We detect:
       1. TestMain(m *testing.M) — package-level setup
       2. Functions that are NOT TestXxx/BenchmarkXxx/ExampleXxx but are
-         called from 2+ test functions in the same file (helper fixtures)
+         called from 3+ test functions in the same file (helper fixtures).
+         Only functions with setup/teardown/fixture-like keywords are included
+         to reduce false positives.
       3. t.Cleanup(func() { ... }) inline teardowns (noted but not extracted
          as top-level fixtures — counted inside calling test)
     """
@@ -505,14 +613,24 @@ def _detect_go(tree, src_bytes: bytes) -> list[FixtureResult]:
     collect_functions(tree.root_node)
     collect_calls(tree.root_node, None)
 
-    # Helper functions called from ≥ 2 test functions
+    # Helper functions called from ≥ 3 test functions (raised from 2 to reduce false positives)
+    # Also filter to only include functions with setup/teardown/fixture-like keywords
     helper_call_count: dict[str, int] = {}
     for calls in test_func_calls.values():
         for c in calls:
             if c in all_func_names and not re.match(r"^(Test|Benchmark|Example)", c):
                 helper_call_count[c] = helper_call_count.get(c, 0) + 1
 
-    multi_used_helpers = {n for n, cnt in helper_call_count.items() if cnt >= 2}
+    # Semantic filtering: only keep helpers with setup/teardown/fixture-like keywords
+    setup_keywords = r"\b(setup|setUp|initialize|Init|prepare|create|build|Before|After|teardown|cleanup|Clean|Destroy|tear)\b"
+    multi_used_helpers = {
+        n for n, cnt in helper_call_count.items() 
+        if cnt >= 3  # Threshold raised from 2 to 3
+        and re.search(setup_keywords, n, re.IGNORECASE)  # Semantic filtering
+    }
+
+    # Also include all TestMain functions regardless of calls
+    multi_used_helpers_all = multi_used_helpers.copy()
 
     def extract_fixtures(node):
         if node.type == "function_declaration":
@@ -529,7 +647,7 @@ def _detect_go(tree, src_bytes: bytes) -> list[FixtureResult]:
                             scope="global",
                         )
                     )
-                elif name in multi_used_helpers:
+                elif name in multi_used_helpers_all:
                     results.append(
                         _build_result(
                             node=node,

@@ -8,10 +8,14 @@ will not duplicate existing records.
 
 import sqlite3
 import json
+import time
+import logging
 from contextlib import contextmanager
 from pathlib import Path
 
 from corpus.config import DB_PATH
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Schema
@@ -114,25 +118,57 @@ CREATE INDEX IF NOT EXISTS idx_test_files_repo  ON test_files(repo_id);
 
 
 def get_connection(db_path: Path = DB_PATH) -> sqlite3.Connection:
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path, timeout=30.0)  # 30 second timeout for lock waits
     conn.row_factory = sqlite3.Row  # rows behave like dicts
     conn.execute("PRAGMA journal_mode=WAL")  # safe for concurrent reads
+    conn.execute("PRAGMA busy_timeout=30000")  # 30s busy timeout (milliseconds)
     conn.execute("PRAGMA foreign_keys=ON")
     return conn
 
 
 @contextmanager
-def db_session(db_path: Path = DB_PATH):
-    """Context manager that commits on success, rolls back on exception."""
-    conn = get_connection(db_path)
-    try:
-        yield conn
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
+def db_session(db_path: Path = DB_PATH, max_retries: int = 5):
+    """
+    Context manager that commits on success, rolls back on exception.
+    Retries on database lock with exponential backoff.
+    """
+    conn = None
+    last_exception = None
+    
+    for attempt in range(max_retries):
+        try:
+            conn = get_connection(db_path)
+            yield conn
+            conn.commit()
+            conn.close()
+            return  # Success
+        except sqlite3.OperationalError as e:
+            if "locked" in str(e).lower() and attempt < max_retries - 1:
+                # Database locked - retry with exponential backoff
+                wait_time = (2 ** attempt) * 0.1  # 0.1s, 0.2s, 0.4s, 0.8s, 1.6s
+                logger.debug(f"Database locked, retrying in {wait_time:.2f}s (attempt {attempt + 1}/{max_retries})")
+                if conn:
+                    conn.rollback()
+                    conn.close()
+                time.sleep(wait_time)
+                last_exception = e
+                continue
+            else:
+                # Not a lock error, or max retries reached
+                if conn:
+                    conn.rollback()
+                    conn.close()
+                raise
+        except Exception:
+            # Other exceptions - rollback and raise
+            if conn:
+                conn.rollback()
+                conn.close()
+            raise
+    
+    # Should not reach here, but just in case
+    if last_exception:
+        raise last_exception
 
 
 def initialise_db(db_path: Path = DB_PATH) -> None:

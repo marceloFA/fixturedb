@@ -196,3 +196,8 @@ CLONE_BATCH_SIZE = 50
 
 # Number of parallel clone workers
 CLONE_WORKERS = 10
+
+# Number of parallel extraction workers (reduced to avoid SQLite lock contention)
+# SQLite has a single-writer limitation; too many concurrent workers cause
+# "database is locked" errors. Safe range is 3-4 for typical systems.
+EXTRACT_WORKERS = 4

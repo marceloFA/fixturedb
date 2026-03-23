@@ -10,8 +10,9 @@ After extraction the local clone is deleted to reclaim disk space.
 
 import logging
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from corpus.config import LANGUAGE_CONFIGS, MIN_FIXTURES_FOUND
+from corpus.config import LANGUAGE_CONFIGS, MIN_FIXTURES_FOUND, EXTRACT_WORKERS
 from corpus.cloner import get_clone_path, delete_clone
 from corpus.db import (
     db_session,
@@ -150,6 +151,14 @@ def _find_test_files(repo_dir: Path, language: str) -> list[Path]:
         ".uxml",  # Unity UI Toolkit files
         # Compressed archives
         ".zip",
+        ".ttl",  # Turtle RDF files
+        ".srx",  # Speech recognition grammar files
+        ".golden",  # Golden files for test fixtures
+        ".snap",  # Snapshot files for test fixtures
+        ".input",  # Input data files for tests
+        ".expected",  # Expected output files for tests
+        ".actual",  # Actual output files for tests
+        ".out",  # General output files
         ".rar",
         ".7z",
         ".tar",
@@ -362,7 +371,7 @@ def _estimate_test_count(file_path: Path, language: str) -> int:
 
 def extract_all_cloned(language: str | None = None) -> dict:
     """
-    Extract fixtures from all repos in 'cloned' status.
+    Extract fixtures from all repos in 'cloned' status using parallel workers.
     Returns aggregate summary.
     """
     with db_session() as conn:
@@ -374,13 +383,23 @@ def extract_all_cloned(language: str | None = None) -> dict:
         logger.info("No cloned repos to extract.")
         return {}
 
-    logger.info(f"Extracting {len(rows)} repos …")
+    logger.info(f"Extracting {len(rows)} repos with {EXTRACT_WORKERS} workers …")
     totals: dict[str, int] = {"fixtures": 0, "mocks": 0}
 
-    for row in rows:
-        summary = extract_repo(row["id"], row["full_name"], row["language"])
-        for k, v in summary.items():
-            totals[k] = totals.get(k, 0) + v
+    with ThreadPoolExecutor(max_workers=EXTRACT_WORKERS) as executor:
+        futures = {
+            executor.submit(
+                extract_repo,
+                row["id"],
+                row["full_name"],
+                row["language"],
+            ): row
+            for row in rows
+        }
+        for future in as_completed(futures):
+            summary = future.result()
+            for k, v in summary.items():
+                totals[k] = totals.get(k, 0) + v
 
     with db_session() as conn:
         stats = get_corpus_stats(conn)
