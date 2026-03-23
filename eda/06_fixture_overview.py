@@ -108,49 +108,79 @@ def plot_fixture_overview(conn, out_dir, show):
     ax.set_yticks([])
     ax.legend(fontsize=9, loc="upper right")
 
-    # ── 6b: fixture type breakdown — single-hue heatmap ──────────────────────
+    # ── 6b: fixture scope distribution — grouped bar chart ──────────────────
     ax2 = axes[1]
-    type_counts = (
+    scope_counts = (
         fixtures[fixtures["language"].isin(present)]
-        .groupby(["language", "fixture_type"])
+        .groupby(["language", "scope"])
         .size()
         .reset_index(name="n")
     )
-    pivot = (
-        type_counts.pivot(index="language", columns="fixture_type", values="n")
+    pivot_scope = (
+        scope_counts.pivot(index="language", columns="scope", values="n")
         .reindex(present)
         .fillna(0)
     )
-    pivot_pct = pivot.div(pivot.sum(axis=1), axis=0) * 100
-
-    annot = np.empty(pivot_pct.shape, dtype=object)
-    for i, lang in enumerate(present):
-        for j, ftype in enumerate(pivot_pct.columns):
-            annot[i, j] = f"{pivot_pct.iloc[i, j]:.0f}%"
-
-    sns.heatmap(
-        pivot_pct,
-        annot=annot,
-        fmt="",
-        cmap="YlOrBr",
-        linewidths=0.4,
-        linecolor="#E0E0E0",
-        cbar_kws={"label": "% of language fixtures"},
-        annot_kws={"size": 8},
-        ax=ax2,
-    )
-    ax2.set_title(
-        "Fixture Type Breakdown per Language\n" "(% share of each detection pattern)"
-    )
-    ax2.set_yticklabels([lang_display(l) for l in present], rotation=0)
-    ax2.set_xticklabels(
-        [c.replace("_", "\n") for c in pivot_pct.columns],
-        rotation=30,
-        ha="right",
-        fontsize=8,
-    )
+    pivot_scope_pct = pivot_scope.div(pivot_scope.sum(axis=1), axis=0) * 100
+    
+    # Order scopes from most to least common
+    scope_order = ["per_test", "per_class", "per_module", "global"]
+    scope_order = [s for s in scope_order if s in pivot_scope_pct.columns]
+    pivot_scope_pct = pivot_scope_pct[scope_order]
+    
+    # Color palette for scopes (semantic: light=frequent, dark=rare)
+    scope_colors = {
+        "per_test": "#4ECDC4",      # Teal - most common, lightweight
+        "per_class": "#FFE66D",     # Yellow - moderate
+        "per_module": "#FF6B6B",    # Red - less common
+        "global": "#95B8D1",        # Blue - rare
+    }
+    
+    x_pos = np.arange(len(present))
+    width = 0.55
+    bottom = np.zeros(len(present))
+    
+    for scope in scope_order:
+        vals = pivot_scope_pct[scope].values
+        color = scope_colors.get(scope, "#CCCCCC")
+        bars = ax2.bar(
+            x_pos,
+            vals,
+            width,
+            label=scope.replace("_", " ").title(),
+            bottom=bottom,
+            color=color,
+            alpha=0.85,
+            edgecolor="white",
+            linewidth=0.5,
+        )
+        
+        # Add percentage labels for segments > 5%
+        for i, (bar, val) in enumerate(zip(bars, vals)):
+            if val > 5:
+                ax2.text(
+                    bar.get_x() + bar.get_width() / 2,
+                    bottom[i] + val / 2,
+                    f"{val:.0f}%",
+                    ha="center",
+                    va="center",
+                    fontsize=7,
+                    fontweight="bold",
+                    color="white" if scope != "per_class" else "#333",
+                )
+        bottom += vals
+    
+    ax2.set_ylabel("Share of Fixtures (%)")
     ax2.set_xlabel("")
-    ax2.set_ylabel("")
+    ax2.set_title(
+        "Fixture Scope Distribution per Language\n"
+        "(per_test vs per_class vs per_module vs global)"
+    )
+    ax2.set_xticks(x_pos)
+    ax2.set_xticklabels([lang_display(l) for l in present])
+    ax2.set_ylim(0, 105)
+    ax2.legend(loc="upper right", fontsize=8, ncol=2)
+    ax2.axhline(50, color="#ddd", linewidth=0.5, linestyle=":", alpha=0.5)
 
     plt.tight_layout()
     save_or_show(fig, "06_fixture_overview", out_dir, show)

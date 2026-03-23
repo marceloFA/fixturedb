@@ -55,7 +55,7 @@ def plot_mock_prevalence(conn, out_dir, show):
 
     present = [l for l in LANG_ORDER if l in fixtures["language"].values]
 
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5), facecolor="#FAFAFA")
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5), facecolor="#FAFAFA")
     fig.suptitle(
         "Mocking Practices Inside Fixtures", fontsize=14, fontweight="bold", y=1.02
     )
@@ -153,6 +153,74 @@ def plot_mock_prevalence(conn, out_dir, show):
         ax2.set_xlabel("Share of mock calls using each framework (%)")
         ax2.set_xlim(0, 105)
         ax2.set_title("Which Mocking Frameworks Do Developers Use?")
+    else:
+        ax2.text(0.5, 0.5, "No framework data available", ha="center", va="center", 
+                 transform=ax2.transAxes, fontsize=10, color="#999")
+        ax2.set_xticks([])
+        ax2.set_yticks([])
+
+    # ── 7c: mock style distribution — stacked horizontal bar by language ──────
+    ax3 = axes[2]
+    mock_styles = qdf(
+        conn,
+        """
+        SELECT m.mock_style, r.language, COUNT(*) as count
+        FROM mock_usages m
+        JOIN repositories r ON m.repo_id = r.id
+        WHERE r.status = 'analysed' AND m.mock_style IS NOT NULL
+        GROUP BY r.language, m.mock_style
+    """,
+    )
+    
+    if not mock_styles.empty:
+        style_pivot = (
+            mock_styles[mock_styles["language"].isin(present)]
+            .pivot(index="language", columns="mock_style", values="count")
+            .reindex(present)
+            .fillna(0)
+        )
+        style_pct = style_pivot.div(style_pivot.sum(axis=1), axis=0) * 100
+        styles = list(style_pct.columns)
+        
+        # Shade palette for mock styles
+        style_colors = {
+            "mock": "#FF6B6B",
+            "stub": "#4ECDC4",
+            "spy": "#FFE66D",
+            "fake": "#95E1D3",
+        }
+        
+        y_pos3 = range(len(present))
+        for i, lang in enumerate(present):
+            left = 0.0
+            for style in styles:
+                w = style_pct.loc[lang, style]
+                color = style_colors.get(style, "#CCCCCC")
+                if w > 0:
+                    ax3.barh(i, w, left=left, color=color, height=0.55, zorder=3)
+                    if w > 5:
+                        ax3.text(
+                            left + w / 2,
+                            i,
+                            style.capitalize(),
+                            ha="center",
+                            va="center",
+                            fontsize=8,
+                            color="white" if style != "spy" else "#333",
+                            fontweight="bold",
+                        )
+                left += w
+        
+        ax3.set_yticks(list(y_pos3))
+        ax3.set_yticklabels([lang_display(l) for l in present])
+        ax3.set_xlabel("Distribution of mock techniques (%)")
+        ax3.set_xlim(0, 105)
+        ax3.set_title("What Mock Techniques Do Developers Prefer?\n(stub, mock, spy, fake patterns)")
+    else:
+        ax3.text(0.5, 0.5, "No mock style data yet\n(run full pipeline to extract)", 
+                 ha="center", va="center", transform=ax3.transAxes, fontsize=9, color="#999")
+        ax3.set_xticks([])
+        ax3.set_yticks([])
 
     plt.tight_layout()
     save_or_show(fig, "07_mock_prevalence", out_dir, show)

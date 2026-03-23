@@ -223,52 +223,89 @@ def plot_corpus_by_tier(conn, out_dir, show):
 
 
 def plot_pipeline_status(conn, out_dir, show):
-    """Plot 1b: Pipeline status breakdown"""
-    repos = qdf(conn, "SELECT status FROM repositories")
+    """Plot 1b: Pipeline status breakdown per language (stacked bars)"""
+    repos = qdf(conn, "SELECT language, status FROM repositories")
     if repos.empty:
         print("  [skip] No repositories in DB yet.")
         return
 
-    fig, ax = plt.subplots(figsize=(10, 5), facecolor="#FAFAFA")
-    fig.suptitle("Pipeline Status Breakdown", fontsize=14, fontweight="bold", y=1.02)
+    present = [l for l in LANG_ORDER if l in repos["language"].values]
 
+    fig, ax = plt.subplots(figsize=(10, 6), facecolor="#FAFAFA")
+    fig.suptitle("Pipeline Status Breakdown", fontsize=14, fontweight="bold", y=0.98)
+
+    # Get status counts per language
     status_order = ["analysed", "skipped", "error", "cloned", "discovered"]
-    status_counts = repos["status"].value_counts().reindex(status_order, fill_value=0)
-    colours = [STATUS_PALETTE[s] for s in status_order]
-    raw = [int(status_counts[s]) for s in status_order]
+    status_data = (
+        repos[repos["language"].isin(present)]
+        .groupby(["language", "status"])
+        .size()
+        .reset_index(name="count")
+    )
 
-    bars = ax.barh(status_order, raw, color=colours, zorder=3, height=0.55)
+    # Pivot to wide format
+    pivot = status_data.pivot(index="language", columns="status", values="count").fillna(0)
+    pivot = pivot.reindex(present)
+    pivot = pivot[[s for s in status_order if s in pivot.columns]]
 
-    x_max = max(raw) if max(raw) > 0 else 1
-    for bar, v in zip(bars, raw):
-        label = f"{v:,}" if v > 0 else "—"
-        # Put label inside bar if bar is wide enough, outside otherwise
-        if v > x_max * 0.08:
-            ax.text(
-                bar.get_width() * 0.97,
-                bar.get_y() + bar.get_height() / 2,
-                label,
-                va="center",
-                ha="right",
-                fontsize=9,
-                fontweight="bold",
-                color="white",
-            )
-        else:
-            ax.text(
-                x_max * 0.02,
-                bar.get_y() + bar.get_height() / 2,
-                label,
-                va="center",
-                ha="left",
-                fontsize=9,
-                fontweight="bold",
-                color="#555",
-            )
+    colours = [STATUS_PALETTE[s] for s in pivot.columns]
+    pivot.plot(
+        kind="barh",
+        stacked=True,
+        ax=ax,
+        color=colours,
+        edgecolor="white",
+        linewidth=0.5,
+    )
 
-    ax.set_xlim(0, x_max * 1.05)
+    # Format x-axis
     ax.set_xlabel("Repositories")
     ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda v, _: f"{int(v):,}"))
+
+    # Format labels
+    ax.set_ylabel("")
+    ax.set_yticklabels([lang_display(l) for l in present])
+
+    # Legend
+    ax.legend(
+        title="Status",
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.08),
+        ncol=5,
+        frameon=False,
+        fontsize=8,
+    )
+
+    # Add total count at end of each bar
+    for i, lang in enumerate(present):
+        total = pivot.iloc[i].sum()
+        ax.text(
+            total,
+            i,
+            f"  {int(total):,}",
+            va="center",
+            fontsize=8,
+            fontweight="bold",
+        )
+
+    # Add analysis criteria as text box
+    criteria_text = (
+        "Analysis Criteria for 'analysed' status:\n"
+        "• ≥ 5 test files in repository\n"
+        "• ≥ 50 commits in history\n"
+        "• ≥ 1 fixture definition detected"
+    )
+    ax.text(
+        0.98,
+        0.02,
+        criteria_text,
+        transform=ax.transAxes,
+        fontsize=7,
+        verticalalignment="bottom",
+        horizontalalignment="right",
+        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5, edgecolor="none"),
+        family="monospace",
+    )
 
     plt.tight_layout()
     save_or_show(fig, "01b_pipeline_status", out_dir, show)
@@ -432,7 +469,7 @@ def plot_repos_creation_timeline(conn, out_dir, show):
     ax.set_xticks(x)
     ax.set_xticklabels([str(y) for y in year_range])
     ax.yaxis.set_major_locator(mticker.MaxNLocator(integer=True))
-    ax.legend(loc="upper left", fontsize=8, framealpha=0.95)
+    ax.legend(loc="upper right", fontsize=8, framealpha=0.95)
     ax.set_ylim(0, bottom.max() * 1.1)
     
     # Add count labels on each segment
@@ -743,7 +780,7 @@ def plot_fixture_distribution(conn, out_dir, show):
 
 
 def plot_fixture_types(conn, out_dir, show):
-    """Plot 6b: Fixture type breakdown per language (heatmap)"""
+    """Plot 6b: Fixture scope distribution per language (stacked bar)"""
     if not has_data(conn, "fixtures"):
         print("  [skip] No fixture data yet. Run `python pipeline.py extract`.")
         return
@@ -751,7 +788,7 @@ def plot_fixture_types(conn, out_dir, show):
     fixtures = qdf(
         conn,
         """
-        SELECT f.fixture_type, r.language, r.full_name
+        SELECT f.scope, r.language, r.full_name
         FROM fixtures f
         JOIN repositories r ON f.repo_id = r.id
         WHERE r.status = 'analysed'
@@ -764,47 +801,81 @@ def plot_fixture_types(conn, out_dir, show):
     present = [l for l in LANG_ORDER if l in fixtures["language"].values]
 
     fig, ax = plt.subplots(1, 1, figsize=(8, 5), facecolor="#FAFAFA")
-    fig.suptitle("Fixture Type Breakdown", fontsize=14, fontweight="bold", y=1.00)
+    fig.suptitle("Fixture Scope Distribution", fontsize=14, fontweight="bold", y=1.00)
 
-    type_counts = (
+    scope_counts = (
         fixtures[fixtures["language"].isin(present)]
-        .groupby(["language", "fixture_type"])
+        .groupby(["language", "scope"])
         .size()
         .reset_index(name="n")
     )
-    pivot = (
-        type_counts.pivot(index="language", columns="fixture_type", values="n")
+    pivot_scope = (
+        scope_counts.pivot(index="language", columns="scope", values="n")
         .reindex(present)
         .fillna(0)
     )
-    pivot_pct = pivot.div(pivot.sum(axis=1), axis=0) * 100
-
-    annot = np.empty(pivot_pct.shape, dtype=object)
-    for i, lang in enumerate(present):
-        for j, ftype in enumerate(pivot_pct.columns):
-            annot[i, j] = f"{pivot_pct.iloc[i, j]:.0f}%"
-
-    sns.heatmap(
-        pivot_pct,
-        annot=annot,
-        fmt="",
-        cmap="YlOrBr",
-        linewidths=0.4,
-        linecolor="#E0E0E0",
-        cbar_kws={"label": "% of language fixtures"},
-        annot_kws={"size": 8},
-        ax=ax,
-    )
-    ax.set_title("% Share of Each Detection Pattern", fontsize=11, pad=10)
-    ax.set_yticklabels([lang_display(l) for l in present], rotation=0)
-    ax.set_xticklabels(
-        [c.replace("_", "\n") for c in pivot_pct.columns],
-        rotation=30,
-        ha="right",
-        fontsize=8,
-    )
+    pivot_scope_pct = pivot_scope.div(pivot_scope.sum(axis=1), axis=0) * 100
+    
+    # Order scopes from most to least common
+    scope_order = ["per_test", "per_class", "per_module", "global"]
+    scope_order = [s for s in scope_order if s in pivot_scope_pct.columns]
+    pivot_scope_pct = pivot_scope_pct[scope_order]
+    
+    # Color palette for scopes (semantic: light=frequent, dark=rare)
+    scope_colors = {
+        "per_test": "#4ECDC4",      # Teal - most common, lightweight
+        "per_class": "#FFE66D",     # Yellow - moderate
+        "per_module": "#FF6B6B",    # Red - less common
+        "global": "#95B8D1",        # Blue - rare
+    }
+    
+    x_pos = np.arange(len(present))
+    width = 0.55
+    bottom = np.zeros(len(present))
+    
+    for scope in scope_order:
+        vals = pivot_scope_pct[scope].values
+        color = scope_colors.get(scope, "#CCCCCC")
+        bars = ax.bar(
+            x_pos,
+            vals,
+            width,
+            label=scope.replace("_", " ").title(),
+            bottom=bottom,
+            color=color,
+            alpha=0.85,
+            edgecolor="white",
+            linewidth=0.5,
+        )
+        
+        # Add percentage labels for segments > 5%
+        for i, (bar, val) in enumerate(zip(bars, vals)):
+            if val > 5:
+                ax.text(
+                    bar.get_x() + bar.get_width() / 2,
+                    bottom[i] + val / 2,
+                    f"{val:.0f}%",
+                    ha="center",
+                    va="center",
+                    fontsize=7,
+                    fontweight="bold",
+                    color="white" if scope != "per_class" else "#333",
+                )
+        bottom += vals
+    
+    ax.set_ylabel("Share of Fixtures (%)")
     ax.set_xlabel("")
-    ax.set_ylabel("")
+    ax.set_title(
+        "Which Fixture Scopes Do Developers Prefer?\n"
+        "(Per-test fixtures run before each test; per-class fixtures run once per class)",
+        fontsize=11,
+        pad=10
+    )
+    ax.set_xticks(x_pos)
+    ax.set_xticklabels([lang_display(l) for l in present])
+    ax.set_ylim(0, 105)
+    ax.legend(loc="upper right", fontsize=8, ncol=2)
+    ax.axhline(50, color="#ddd", linewidth=0.5, linestyle=":", alpha=0.5)
 
     plt.tight_layout()
     save_or_show(fig, "06b_fixture_types", out_dir, show)
@@ -976,10 +1047,194 @@ def plot_framework_usage(conn, out_dir, show):
     save_or_show(fig, "07b_framework_usage", out_dir, show)
 
 
+def plot_mock_styles(conn, out_dir, show):
+    """Plot 7c: Mock technique styles (stub, mock, spy, fake distribution)"""
+    if not has_data(conn, "mock_usages"):
+        return
+
+    mock_styles = qdf(
+        conn,
+        """
+        SELECT m.mock_style, r.language, COUNT(*) as count
+        FROM mock_usages m
+        JOIN repositories r ON m.repo_id = r.id
+        WHERE r.status = 'analysed' AND m.mock_style IS NOT NULL
+        GROUP BY r.language, m.mock_style
+    """,
+    )
+    
+    fixtures = qdf(
+        conn,
+        """
+        SELECT language FROM fixtures f
+        JOIN repositories r ON f.repo_id = r.id
+        WHERE r.status = 'analysed'
+    """,
+    )
+    
+    if fixtures.empty:
+        return
+
+    present = [l for l in LANG_ORDER if l in fixtures["language"].values]
+
+    fig, ax = plt.subplots(1, 1, figsize=(8, 5), facecolor="#FAFAFA")
+    fig.suptitle("Mock Techniques", fontsize=14, fontweight="bold", y=1.00)
+
+    if mock_styles.empty:
+        # No mock_style data has been classified yet
+        ax.text(
+            0.5, 0.5, 
+            "No mock style data yet\n(will populate after fixture extraction & classification)",
+            ha="center", va="center", 
+            transform=ax.transAxes, 
+            fontsize=10, color="#999",
+            bbox=dict(boxstyle="round,pad=0.5", facecolor="#f0f0f0", edgecolor="#ddd")
+        )
+        ax.set_xticks([])
+        ax.set_yticks([])
+    else:
+        style_pivot = (
+            mock_styles[mock_styles["language"].isin(present)]
+            .pivot(index="language", columns="mock_style", values="count")
+            .reindex(present)
+            .fillna(0)
+        )
+        style_pct = style_pivot.div(style_pivot.sum(axis=1), axis=0) * 100
+        styles = list(style_pct.columns)
+        
+        # Shade palette for mock styles: semantic color meanings
+        style_colors = {
+            "mock": "#FF6B6B",      # Red - full mock replacement
+            "stub": "#4ECDC4",      # Teal - minimal stub
+            "spy": "#FFE66D",       # Yellow - spy/observation
+            "fake": "#95E1D3",      # Mint - lightweight fake impl
+        }
+        
+        y_pos = range(len(present))
+        for i, lang in enumerate(present):
+            left = 0.0
+            for style in styles:
+                w = style_pct.loc[lang, style]
+                color = style_colors.get(style, "#CCCCCC")
+                if w > 0:
+                    ax.barh(i, w, left=left, color=color, height=0.55, zorder=3)
+                    if w > 5:
+                        # Use darker text for light backgrounds
+                        text_color = "white" if style != "spy" else "#333"
+                        ax.text(
+                            left + w / 2,
+                            i,
+                            style.capitalize(),
+                            ha="center",
+                            va="center",
+                            fontsize=8,
+                            color=text_color,
+                            fontweight="bold",
+                        )
+                left += w
+        
+        ax.set_yticks(list(y_pos))
+        ax.set_yticklabels([lang_display(l) for l in present])
+        ax.set_xlabel("Distribution of mock techniques (%)")
+        ax.set_xlim(0, 105)
+        ax.set_title("What Mock Techniques Do Developers Use?\n(stub, mock, spy, fake patterns)", fontsize=11, pad=10)
+
+    plt.tight_layout()
+    save_or_show(fig, "07c_mock_styles", out_dir, show)
+
+
 def plot_mock_prevalence(conn, out_dir, show):
-    """Wrapper: calls both mocking practice plots"""
+    """Wrapper: calls all mocking practice plots"""
     plot_mock_prevalence_chart(conn, out_dir, show)
     plot_framework_usage(conn, out_dir, show)
+
+
+def plot_fixture_categories(conn, out_dir, show):
+    """Plot 8: Fixture categorization by usage pattern (horizontal bar chart)"""
+    fixtures = qdf(
+        conn,
+        """
+        SELECT category
+        FROM fixtures
+        WHERE category IS NOT NULL
+    """,
+    )
+    if fixtures.empty or fixtures["category"].isna().all():
+        print("  [skip] No fixture categories yet. Run `python pipeline.py categorize`.")
+        return
+
+    # Count by category
+    cat_counts = (
+        fixtures[fixtures["category"].notna()]
+        .groupby("category")
+        .size()
+        .reset_index(name="count")
+    )
+    cat_counts["pct"] = (cat_counts["count"] / cat_counts["count"].sum() * 100)
+
+    # Sort by count descending
+    cat_counts = cat_counts.sort_values("count", ascending=True)
+
+    # Color palette for categories (semantic: primary patterns first)
+    category_colors = {
+        "data_builder": "#2E86AB",        # Blue - most common, primary pattern
+        "hybrid": "#A23B72",             # Purple - multi-purpose
+        "mock_setup": "#F18F01",         # Orange - test isolation
+        "resource_management": "#C73E1D", # Rust - resource handling
+        "service_setup": "#6A994E",      # Green - dependency management
+        "state_reset": "#BC4749",        # Red - state management
+        "configuration_setup": "#D4A574", # Tan - configuration
+        "environment": "#5A189A",        # Dark purple - environment
+    }
+
+    fig, ax = plt.subplots(1, 1, figsize=(10, 6), facecolor="#FAFAFA")
+    fig.suptitle("Fixture Categorization", fontsize=14, fontweight="bold", y=0.98)
+
+    # Create horizontal bar chart
+    colors = [category_colors.get(cat, "#CCCCCC") for cat in cat_counts["category"]]
+    bars = ax.barh(
+        cat_counts["category"],
+        cat_counts["count"],
+        color=colors,
+        alpha=0.85,
+        edgecolor="white",
+        linewidth=1,
+    )
+
+    # Add count and percentage labels
+    for i, (bar, count, pct) in enumerate(
+        zip(bars, cat_counts["count"], cat_counts["pct"])
+    ):
+        ax.text(
+            count,
+            bar.get_y() + bar.get_height() / 2,
+            f"  {count:,} ({pct:.1f}%)",
+            va="center",
+            fontsize=9,
+            fontweight="bold",
+        )
+
+    ax.set_xlabel("Number of Fixtures")
+    ax.set_ylabel("")
+    ax.set_title(
+        "Test Fixtures by Category\n(RQ1 Taxonomy — Usage Patterns)",
+        fontsize=11,
+        pad=10,
+    )
+
+    # Format y-axis labels to be more readable
+    labels = [label.replace("_", " ").title() for label in cat_counts["category"]]
+    ax.set_yticklabels(labels)
+
+    # Grid for readability
+    ax.grid(axis="x", alpha=0.3, linestyle=":", linewidth=0.5)
+    ax.set_axisbelow(True)
+
+    # Format x-axis to show thousands separator
+    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f"{int(x):,}"))
+
+    plt.tight_layout()
+    save_or_show(fig, "08_fixture_categories", out_dir, show)
 
 
 # ---------------------------------------------------------------------------
@@ -1025,6 +1280,7 @@ def main():
         ("Domain Distribution", plot_domain_distribution),
         ("Stars vs Forks", plot_fork_star_ratio),
         ("Fixture Overview", plot_fixture_overview),
+        ("Fixture Categories", plot_fixture_categories),
         ("Mock Prevalence", plot_mock_prevalence),
     ]:
         print(f"[{name}]")
