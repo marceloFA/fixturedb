@@ -111,3 +111,7 @@ The following visualizations provide an overview of the FixtureDB corpus:
 ![Mock Usage Prevalence](docs/plots/07a_mock_prevalence.png)
 
 ![Mocking Framework Usage](docs/plots/07b_framework_usage.png)
+
+**Fixture Categories**
+
+![Fixture Categories](docs/plots/08_fixture_categories.png)
