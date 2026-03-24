@@ -16,7 +16,8 @@ This folder contains the complete documentation for FixtureDB, split into dedica
 10. **[Configuration Reference](10-configuration.md)** — All tunable parameters
 11. **[Fixture Detection Logic](11-detection.md)** — Tree-sitter AST and mock detection
 12. **[Limitations and Threats to Validity](12-limitations.md)** — Known constraints and validation status
-13. **[License](13-license.md)** — MIT (code) and CC BY 4.0 (dataset)
+13. **[Testing Strategy & Execution](14-testing.md)** — Test suite overview, categories, and how to run
+14. **[License](13-license.md)** — MIT (code) and CC BY 4.0 (dataset)
 
 ## Getting started
 
@@ -24,6 +25,7 @@ This folder contains the complete documentation for FixtureDB, split into dedica
 - **Ready to install?** Go to [Setup and Requirements](06-setup.md)
 - **Want to run it?** See [Running the Pipeline](07-running.md)
 - **Need to query the data?** Check [Using the Dataset for Research](09-usage.md)
+- **Want to run the test suite?** See [Testing Strategy & Execution](14-testing.md)
 
 ## Paper citation
 

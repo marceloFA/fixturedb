@@ -15,3 +15,5 @@ gitpython>=3.1.40
 seaborn>=0.12.2
 matplotlib>=3.10.8
 scipy>=1.17.1
+pytest>=7.0.0
+pytest-cov>=4.0.0

@@ -31,7 +31,7 @@ from pathlib import Path
 # Ensure project root is on the path when run directly
 sys.path.insert(0, str(Path(__file__).parent))
 
-from corpus.config import (
+from collection.config import (
     LANGUAGE_CONFIGS,
     CLONE_BATCH_SIZE,
     DISCOVERY_SURVIVAL_RATE,
@@ -40,7 +40,7 @@ from corpus.config import (
     MAX_REPOS_PER_ITERATION,
     LANGUAGE_SURVIVAL_RATES,
 )
-from corpus.db import (
+from collection.db import (
     initialise_db,
     db_is_initialised,
     db_session,
@@ -50,13 +50,13 @@ from corpus.db import (
     get_discovered_count_for_language,
     get_survival_rate_for_language,
 )
-from corpus.search import collect_repos_for_language, collect_all_languages
-from corpus.cloner import clone_pending_repos, cleanup_stale_clones
-from corpus.extractor import extract_all_cloned
-from corpus.classifier import classify_all
-from corpus.fixture_classifier import categorize_all
-from corpus.exporter import export_dataset
-from corpus.validator import generate_sample, compute_metrics
+from collection.search import collect_repos_for_language, collect_all_languages
+from collection.cloner import clone_pending_repos, cleanup_stale_clones
+from collection.extractor import extract_all_cloned
+from collection.classifier import classify_all
+from collection.fixture_classifier import categorize_all
+from collection.exporter import export_dataset
+from collection.validator import generate_sample, compute_metrics
 
 # ---------------------------------------------------------------------------
 # Logging setup

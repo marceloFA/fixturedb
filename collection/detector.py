@@ -324,14 +324,20 @@ def _detect_python(tree, src_bytes: bytes) -> list[FixtureResult]:
                         )
                     )
                 
-                # Nose-style fixtures: setup/teardown/setup_module/teardown_module
+                # Nose-style fixtures: setup/teardown/setup_module/teardown_module/setup_package/teardown_package
                 elif name in (
                     "setup",
                     "teardown",
                     "setup_module",
                     "teardown_module",
+                    "setup_package",
+                    "teardown_package",
                 ):
-                    scope = "per_module" if "module" in name else "per_test"
+                    scope = "per_test"
+                    if "module" in name:
+                        scope = "per_module"
+                    elif "package" in name:
+                        scope = "per_module"
                     results.append(
                         _build_result(
                             node=node,
@@ -366,6 +372,7 @@ JUNIT_FIXTURE_ANNOTATIONS = {
     "@BeforeClass": ("testng_before_class", "per_class"),  # TestNG (same name as JUnit4, handled specially)
     "@AfterMethod": ("testng_after_method", "per_test"),  # TestNG
     "@AfterClass": ("testng_after_class", "per_class"),  # TestNG
+    "@DataProvider": ("testng_data_provider", "per_test"),  # TestNG data-driven fixture
     "@Rule": ("junit_rule", "per_test"),  # JUnit @Rule fixture fields
     "@ClassRule": ("junit_class_rule", "per_class"),  # JUnit @ClassRule fixture fields
 }
@@ -471,6 +478,14 @@ JS_FIXTURE_CALLS = {
     "after": ("mocha_after", "per_test"),  # default to per_test for ambiguous mocha hooks
 }
 
+# AVA fixture patterns - using member access like test.before()
+AVA_FIXTURE_PATTERNS = {
+    "before": ("ava_before", "per_class"),
+    "after": ("ava_after", "per_class"),
+    "serial.before": ("ava_serial_before", "per_test"),
+    "serial.after": ("ava_serial_after", "per_test"),
+}
+
 
 def _detect_js(tree, src_bytes: bytes) -> list[FixtureResult]:
     results = []
@@ -488,6 +503,8 @@ def _detect_js(tree, src_bytes: bytes) -> list[FixtureResult]:
             func_node = target.child_by_field_name("function")
             if func_node:
                 name = _source(func_node, src_bytes).strip()
+                
+                # Check standard hooks (Jest/Mocha style)
                 if name in JS_FIXTURE_CALLS:
                     fixture_type, scope = JS_FIXTURE_CALLS[name]
                     results.append(
@@ -499,6 +516,69 @@ def _detect_js(tree, src_bytes: bytes) -> list[FixtureResult]:
                             scope=scope,
                         )
                     )
+                
+                # Check AVA patterns: test.before, test.after, test.serial.before, test.serial.after
+                # These appear as member_access_expression like "test.before" or "test.serial.before"
+                elif func_node.type == "member_expression":
+                    # Get the full member access chain
+                    member_src = _source(func_node, src_bytes).strip()
+                    
+                    # Check if it's a test.* pattern
+                    if member_src.startswith("test."):
+                        ava_pattern = member_src[5:]  # Remove "test." prefix
+                        if ava_pattern in AVA_FIXTURE_PATTERNS:
+                            fixture_type, scope = AVA_FIXTURE_PATTERNS[ava_pattern]
+                            results.append(
+                                _build_result(
+                                    node=target,
+                                    func_node=target,
+                                    src_bytes=src_bytes,
+                                    fixture_type=fixture_type,
+                                    scope=scope,
+                                )
+                            )
+        
+        # TypeScript decorator patterns: @Before, @After, @BeforeEach, etc.
+        elif node.type == "method_definition":
+            # Check if there's a preceding decorator node
+            parent = node.parent
+            if parent:
+                # Find this node's index in its parent's children
+                node_index = None
+                for i, child in enumerate(parent.children):
+                    if child == node:
+                        node_index = i
+                        break
+                
+                # Check if the preceding sibling is a decorator
+                if node_index is not None and node_index > 0:
+                    prev_sibling = parent.children[node_index - 1]
+                    if prev_sibling.type == "decorator":
+                        dec_text = _source(prev_sibling, src_bytes).strip()
+                        # Remove @ symbol and check if it's a known decorator
+                        dec_name = dec_text.lstrip("@").split("(")[0].strip()
+                        
+                        # Mapping of TypeScript decorators to fixture types
+                        decorator_map = {
+                            "Before": ("mocha_before", "per_test"),
+                            "After": ("mocha_after", "per_test"),
+                            "BeforeEach": ("before_each", "per_test"),
+                            "AfterEach": ("after_each", "per_test"),
+                            "BeforeAll": ("before_all", "per_class"),
+                            "AfterAll": ("after_all", "per_class"),
+                        }
+                        
+                        if dec_name in decorator_map:
+                            fixture_type, scope = decorator_map[dec_name]
+                            results.append(
+                                _build_result(
+                                    node=node,
+                                    func_node=node,
+                                    src_bytes=src_bytes,
+                                    fixture_type=fixture_type,
+                                    scope=scope,
+                                )
+                            )
 
         for child in node.children:
             visit(child)
@@ -528,23 +608,48 @@ CSHARP_FIXTURE_ATTRIBUTES = {
 def _detect_csharp(tree, src_bytes: bytes) -> list[FixtureResult]:
     results = []
 
+    def detect_fixture_attributes(node, src_bytes):
+        """Extract fixture attributes from a node."""
+        attributes = []
+        for c in node.children:
+            if c.type == "attribute_list":
+                # Extract attributes from inside the attribute_list
+                for attr_node in c.children:
+                    if attr_node.type == "attribute":
+                        attr_text = _source(attr_node, src_bytes).strip()
+                        attributes.append(attr_text)
+        return attributes
+    
+    def get_method_name(node, src_bytes):
+        """Get method name from method_declaration or local_function_statement."""
+        # For method_declaration, try 'name' field
+        name_node = node.child_by_field_name("name")
+        if name_node:
+            return _source(name_node, src_bytes)
+        
+        # For local_function_statement, find the first identifier
+        for c in node.children:
+            if c.type == "identifier":
+                return _source(c, src_bytes)
+        return ""
+
     def visit(node):
-        if node.type == "method_declaration":
+        # Handle both method_declaration and local_function_statement
+        if node.type in ("method_declaration", "local_function_statement"):
+            # Get method name
+            method_name = get_method_name(node, src_bytes)
+            
             # Collect all attributes for this method
-            # Attributes are in attribute_list children
-            attributes = []
-            for c in node.children:
-                if c.type == "attribute_list":
-                    # Extract attributes from inside the attribute_list
-                    for attr_node in c.children:
-                        if attr_node.type == "attribute":
-                            attr_text = _source(attr_node, src_bytes).strip()
-                            attributes.append(attr_text)
+            attributes = detect_fixture_attributes(node, src_bytes)
             
             # Check if any known fixture attribute is present
+            # Sort by length descending so more specific attributes match first (e.g., OneTimeSetUp before SetUp)
             for attr in attributes:
-                for attr_name, (fixture_type, scope) in CSHARP_FIXTURE_ATTRIBUTES.items():
-                    if attr_name in attr:
+                matched = False
+                for attr_name in sorted(CSHARP_FIXTURE_ATTRIBUTES.keys(), key=len, reverse=True):
+                    # Use word boundary checking to avoid "SetUp" matching "OneTimeSetUp"
+                    if attr_name == attr or attr.startswith(attr_name + "[") or attr.startswith(attr_name + "("):
+                        fixture_type, scope = CSHARP_FIXTURE_ATTRIBUTES[attr_name]
                         results.append(
                             _build_result(
                                 node=node,
@@ -554,7 +659,26 @@ def _detect_csharp(tree, src_bytes: bytes) -> list[FixtureResult]:
                                 scope=scope,
                             )
                         )
-                        break  # Only one fixture type per method
+                        matched = True
+                        break
+                if matched:
+                    break  # Only one fixture type per method
+            
+            # IAsyncLifetime interface methods: InitializeAsync and DisposeAsync
+            # Only for method_declaration (not local functions)
+            if node.type == "method_declaration" and not attributes:  # Only if no explicit attributes were found
+                if method_name in ("InitializeAsync", "DisposeAsync"):
+                    fixture_type = "xunit_async_initialize" if method_name == "InitializeAsync" else "xunit_async_dispose"
+                    scope = "per_class"
+                    results.append(
+                        _build_result(
+                            node=node,
+                            func_node=node,
+                            src_bytes=src_bytes,
+                            fixture_type=fixture_type,
+                            scope=scope,
+                        )
+                    )
 
         for child in node.children:
             visit(child)
@@ -655,6 +779,29 @@ def _detect_go(tree, src_bytes: bytes) -> list[FixtureResult]:
                             src_bytes=src_bytes,
                             fixture_type="go_helper",
                             scope="per_test",
+                        )
+                    )
+        
+        # testify/suite methods: SetupSuite, TeardownSuite, SetupTest, TeardownTest
+        elif node.type == "method_declaration":
+            name_node = node.child_by_field_name("name")
+            if name_node:
+                name = _source(name_node, src_bytes)
+                if name in ("SetupSuite", "TeardownSuite", "SetupTest", "TeardownTest"):
+                    scope = "per_class" if name in ("SetupSuite", "TeardownSuite") else "per_test"
+                    fixture_type_map = {
+                        "SetupSuite": "go_setup_suite",
+                        "TeardownSuite": "go_teardown_suite",
+                        "SetupTest": "go_setup_test",
+                        "TeardownTest": "go_teardown_test",
+                    }
+                    results.append(
+                        _build_result(
+                            node=node,
+                            func_node=node,
+                            src_bytes=src_bytes,
+                            fixture_type=fixture_type_map[name],
+                            scope=scope,
                         )
                     )
 
