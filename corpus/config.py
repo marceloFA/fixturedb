@@ -72,7 +72,7 @@ class LanguageConfig:
 #   The 100-star floor is the common quality minimum in MSR work.
 # ---------------------------------------------------------------------------
 
-STAR_TIER_CORE_THRESHOLD = 500  # 'core'     — directly comparable to Hamster
+STAR_TIER_CORE_THRESHOLD = 500  # 'core', directly comparable to Hamster
 # repos with stars in [MIN_STARS, 499] are tagged 'extended'
 
 
@@ -117,7 +117,7 @@ LANGUAGE_CONFIGS = {
         name="Python",
         github_language="Python",
         min_stars=100,
-        target_repos=300,
+        target_repos=400,
         test_path_patterns=["test/", "tests/", "testing/", "test_", "conftest"],
         test_file_suffixes=["test_.py", "_test.py", "_tests.py"],
     ),
@@ -125,7 +125,7 @@ LANGUAGE_CONFIGS = {
         name="Java",
         github_language="Java",
         min_stars=100,
-        target_repos=300,
+        target_repos=400,
         test_path_patterns=["src/test/", "test/", "tests/"],
         test_file_suffixes=["Test.java", "Tests.java", "IT.java", "Spec.java"],
     ),
@@ -133,7 +133,7 @@ LANGUAGE_CONFIGS = {
         name="JavaScript",
         github_language="JavaScript",
         min_stars=100,
-        target_repos=175,
+        target_repos=250,
         test_path_patterns=["__tests__/", "test/", "tests/", "spec/"],
         test_file_suffixes=[
             ".test.js",
@@ -149,7 +149,7 @@ LANGUAGE_CONFIGS = {
         name="TypeScript",
         github_language="TypeScript",
         min_stars=100,
-        target_repos=125,
+        target_repos=150,
         test_path_patterns=["__tests__/", "test/", "tests/", "spec/"],
         test_file_suffixes=[
             ".test.ts",
@@ -165,7 +165,7 @@ LANGUAGE_CONFIGS = {
         name="Go",
         github_language="Go",
         min_stars=100,
-        target_repos=300,
+        target_repos=400,
         test_path_patterns=["test/", "tests/", "_test.go"],
         test_file_suffixes=["_test.go"],
     ),
@@ -187,7 +187,7 @@ LANGUAGE_CONFIGS = {
 
 # Minimum thresholds applied after cloning
 MIN_TEST_FILES = 5  # repos with fewer test files are dropped
-MIN_COMMITS = 50  # repos with fewer commits are dropped
+MIN_COMMITS = 100  # repos with fewer commits are dropped
 MIN_FIXTURES_FOUND = 1  # repos where we detect zero fixtures are dropped
 
 # Per-language survival rates (discovered → analyzed with fixtures)

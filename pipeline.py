@@ -87,7 +87,8 @@ def cmd_init(args):
 def cmd_search(args):
     language = args.language
     max_repos = args.max
-    stratified = getattr(args, "stratified", True)  # Default to stratified
+    sort_by_stars = not getattr(args, "stratified", False)  # Default to True unless --stratified is passed
+    stratified = getattr(args, "stratified", False)
 
     if language:
         if language not in LANGUAGE_CONFIGS:
@@ -96,12 +97,13 @@ def cmd_search(args):
                 f"Choose from: {list(LANGUAGE_CONFIGS)}"
             )
             sys.exit(1)
-        count = collect_repos_for_language(language, max_repos=max_repos, stratified=stratified)
+        count = collect_repos_for_language(language, max_repos=max_repos, sort_by_stars=sort_by_stars, stratified=stratified)
         print(f"✓ {count} repos discovered for {language}")
     else:
-        results = collect_all_languages(max_per_language=max_repos, stratified=stratified)
+        results = collect_all_languages(max_per_language=max_repos, sort_by_stars=sort_by_stars, stratified=stratified)
         for lang, count in results.items():
             print(f"  {lang:12s}: {count} repos")
+
 
 
 def cmd_cleanup(args):
@@ -202,7 +204,7 @@ def cmd_collect(args):
         print("ERROR: --target must be a positive integer")
         sys.exit(1)
     
-    stratified = getattr(args, "stratified", True)
+    stratified = getattr(args, "stratified", False)
     
     # Initialize DB if needed
     if not db_is_initialised():
@@ -372,10 +374,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--max", type=int, default=None, help="Max repos per language"
     )
     p_search.add_argument(
-        "--no-stratified",
-        action="store_false",
+        "--stratified",
+        action="store_true",
         dest="stratified",
-        help="Use chronological search (legacy, biased toward older repos). Default: stratified sampling by year",
+        help="Collect repos proportionally from each year (balanced sampling). Default: sort by star count (most stars first).",
     )
 
     # clone
@@ -401,10 +403,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--max", type=int, default=None, help="Max repos per language to search"
     )
     p_run.add_argument(
-        "--no-stratified",
-        action="store_false",
+        "--stratified",
+        action="store_true",
         dest="stratified",
-        help="Use chronological search (legacy, biased toward older repos). Default: stratified sampling by year",
+        help="Collect repos proportionally from each year (balanced sampling). Default: sort by star count (most stars first).",
     )
 
     # collect
@@ -425,10 +427,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="Target number of successfully analyzed repos (gold standard, post-filtering)",
     )
     p_collect.add_argument(
-        "--no-stratified",
-        action="store_false",
+        "--stratified",
+        action="store_true",
         dest="stratified",
-        help="Use chronological search (legacy). Default: stratified sampling by year",
+        help="Collect repos proportionally from each year (balanced sampling). Default: sort by star count (most stars first).",
     )
 
     # cleanup

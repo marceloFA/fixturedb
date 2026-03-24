@@ -6,10 +6,26 @@ is interrupted and restarted, already-completed work is skipped.
 ## Phase 1 — Repository Discovery (`search`)
 
 The GitHub Search API is queried for repositories matching per-language
-criteria. Because GitHub caps search results at 1,000 per query, the search
-is split into **6-month creation-date buckets** going back to January 2015.
-Each bucket is a separate query, and results within a bucket are paginated
-(up to 10 pages × 100 results = 1,000 per bucket).
+criteria. **By default, repositories are collected sorted by star count
+(most stars first)** to maximize the percentage of high-quality (500+ stars)
+repositories.
+
+The default `--sort-by-stars` strategy paginates through results
+(up to 35 pages × 100 results) ordered by GitHub's native star ranking.
+
+### Alternative: Stratified collection
+
+If temporal balance is desired, use `--stratified` flag to collect repos
+proportionally from each year (2015–present). This strategy splits the search
+into **1-year creation-date buckets** and allocates repos per bucket to ensure
+even representation across time. This is useful if analyzing the evolution of
+testing practices over the years.
+
+**Note:** GitHub caps search results at 1,000 per query. Both strategies
+respect this limit via pagination (star-count: 35 pages of results; stratified:
+one query per year, paginated up to 10 pages per bucket).
+
+### Common to all strategies
 
 Repositories are written to the `repositories` table with `status = 'discovered'`.
 Repos that match **exclusion keywords** in their name or description
@@ -18,7 +34,7 @@ are silently dropped before writing.
 
 Authenticated requests (with `GITHUB_TOKEN`) are rate-limited to
 30 search requests/minute. The pipeline respects this with a 2-second delay
-between pages and backs off automatically on 403 responses.
+between requests and backs off automatically on 403 responses.
 
 ## Phase 2 — Cloning (`clone`)
 

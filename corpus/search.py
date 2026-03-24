@@ -179,7 +179,8 @@ def _build_query(config: LanguageConfig, min_stars: int | None = None) -> str:
 def collect_repos_for_language(
     language_key: str,
     max_repos: int | None = None,
-    stratified: bool = True,
+    sort_by_stars: bool = True,
+    stratified: bool = False,
     min_stars: int | None = None,
 ) -> int:
     """
@@ -193,22 +194,114 @@ def collect_repos_for_language(
 
     Args:
         language_key: Language to collect (e.g., 'python', 'java')
-        max_repos: Target total repos. If stratified=True, this is divided
-                   proportionally across years. If stratified=False, search
-                   stops once max_repos is reached (older repos prioritized).
-        stratified: If True, collect repos proportionally from each year
-                    (representative sampling). If False, collect chronologically
-                    from oldest first (original behavior, prone to skew).
+        max_repos: Target total repos.
+        sort_by_stars: If True (default), collect repos sorted by star count (most stars first).
+                       Maximizes core-tier repos. Overrides stratified.
+        stratified: If True, collect repos proportionally from each year (representative sampling).
+                    Ignored if sort_by_stars=True.
         min_stars: Minimum stars to filter by (e.g., 500 for core repos).
                    If None, uses config.min_stars.
     """
     config = LANGUAGE_CONFIGS[language_key]
     max_repos = max_repos or config.target_repos
 
-    if stratified:
+    if sort_by_stars:
+        return _collect_repos_by_stars(language_key, config, max_repos, min_stars)
+    elif stratified:
         return _collect_repos_stratified(language_key, config, max_repos, min_stars)
     else:
         return _collect_repos_chronological(language_key, config, max_repos, min_stars)
+
+
+def _collect_repos_by_stars(
+    language_key: str, config: LanguageConfig, max_repos: int, min_stars: int | None = None
+) -> int:
+    """
+    Collect repos sorted by star count (most stars first).
+    
+    This is the preferred strategy when you want to maximize high-quality (500+ star)
+    repositories. By collecting in order of star count, you get the most popular
+    repos first, naturally maximizing the percentage of core-tier repos.
+    
+    The GitHub API search already returns results sorted by stars (descending),
+    so this approach simply pages through without splitting into date buckets.
+    
+    Args:
+        language_key: e.g., 'python'
+        config: Language configuration
+        max_repos: Target total repos
+        min_stars: Minimum stars filter (uses config.min_stars if None)
+    """
+    stars_desc = " (500+ stars)" if min_stars and min_stars >= 500 else ""
+    logger.info(
+        f"[{language_key}] Starting STAR-COUNT collection{stars_desc}. "
+        f"Target: {max_repos} repos. "
+        f"Collecting in order of popularity (most stars first) to maximize core-tier repos."
+    )
+
+    total_written = 0
+    base_query = _build_query(config, min_stars=min_stars)
+    page = 1
+
+    while total_written < max_repos:
+        rl = _check_rate_limit()
+        _wait_for_rate_limit(rl)
+
+        logger.debug(f"[{language_key}] page {page} ({total_written}/{max_repos})")
+        data = _search_page(base_query, page=page)
+        items = data.get("items", [])
+
+        if not items:
+            logger.info(
+                f"[{language_key}] No more results at page {page}. "
+                f"Stopping. Total: {total_written}/{max_repos}"
+            )
+            break
+
+        with db_session() as conn:
+            for repo in items:
+                if total_written >= max_repos:
+                    break
+
+                excluded, reason = _is_excluded(repo, config)
+                if excluded:
+                    logger.debug(f"  skip {repo['full_name']}: {reason}")
+                    continue
+
+                record = {
+                    "github_id": repo["id"],
+                    "full_name": repo["full_name"],
+                    "language": language_key,
+                    "stars": repo.get("stargazers_count"),
+                    "forks": repo.get("forks_count"),
+                    "description": repo.get("description"),
+                    "topics": json.dumps(repo.get("topics", [])),
+                    "created_at": repo.get("created_at"),
+                    "pushed_at": repo.get("pushed_at"),
+                    "clone_url": repo.get("clone_url"),
+                    "star_tier": star_tier(repo.get("stargazers_count") or 0),
+                }
+                _, is_new = upsert_repository(conn, record)
+                if is_new:
+                    total_written += 1
+
+        page += 1
+        # GitHub API allows up to 34 pages of 100 results = 3400 max per query
+        # Stop after 35 pages to stay well within limits
+        if page > 35:
+            logger.info(
+                f"[{language_key}] Reached page limit (35 pages × 100 items = 3500 results). "
+                f"Total: {total_written}/{max_repos}. "
+                f"If more repos needed, run again — they'll be added in next batch."
+            )
+            break
+
+        time.sleep(REQUEST_DELAY)
+
+    logger.info(
+        f"[{language_key}] Star-count collection complete. Total repos: {total_written}"
+    )
+    return total_written
 
 
 def _collect_repos_stratified(
@@ -442,9 +535,9 @@ def _generate_date_buckets(
 # ---------------------------------------------------------------------------
 
 
-def collect_all_languages(max_per_language: int | None = None, stratified: bool = True) -> dict[str, int]:
+def collect_all_languages(max_per_language: int | None = None, sort_by_stars: bool = True, stratified: bool = False) -> dict[str, int]:
     results = {}
     for lang in LANGUAGE_CONFIGS:
-        count = collect_repos_for_language(lang, max_repos=max_per_language, stratified=stratified)
+        count = collect_repos_for_language(lang, max_repos=max_per_language, sort_by_stars=sort_by_stars, stratified=stratified)
         results[lang] = count
     return results

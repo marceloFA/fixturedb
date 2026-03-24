@@ -431,8 +431,9 @@ def extract_all_cloned(language: str | None = None, target_analyzed: int | None 
     """
     Extract fixtures from repos in 'cloned' status using parallel workers.
     
-    If target_analyzed is set, stop early when target is reached (maintaining temporal balance).
-    Uses stratified round-robin extraction across creation year buckets to avoid temporal bias.
+    Extraction uses round-robin ordering across creation year buckets to maintain
+    temporal balance during the extraction phase (independent of discovery strategy).
+    If target_analyzed is set, stop early when target is reached.
     
     Args:
         language: Filter to specific language (or None for all)
@@ -462,7 +463,7 @@ def extract_all_cloned(language: str | None = None, target_analyzed: int | None 
         logger.info("No cloned repos to extract.")
         return {"fixtures": 0, "mocks": 0, "early_stopped": False}
 
-    # Group repos by creation year for stratified extraction
+    # Group repos by creation year for round-robin extraction order
     by_year = {}
     for row in rows:
         year = row["year"]
@@ -470,7 +471,7 @@ def extract_all_cloned(language: str | None = None, target_analyzed: int | None 
             by_year[year] = []
         by_year[year].append(row)
     
-    # Build extraction queue in round-robin order across years (temporal balance)
+    # Build extraction queue in round-robin order across years (balance extraction across time)
     extraction_queue = []
     max_year_count = max(len(v) for v in by_year.values())
     for i in range(max_year_count):
@@ -480,7 +481,7 @@ def extract_all_cloned(language: str | None = None, target_analyzed: int | None 
 
     logger.info(
         f"Extracting {len(extraction_queue)} repos with {EXTRACT_WORKERS} workers "
-        f"(stratified across {len(by_year)} years) …"
+        f"(round-robin across {len(by_year)} creation years) …"
     )
     if target_analyzed:
         logger.info(f"Will stop early when {target_analyzed} analyzed repos reached")
