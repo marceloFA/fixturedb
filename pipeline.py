@@ -25,6 +25,7 @@ Examples
 
 import argparse
 import logging
+import subprocess
 import sys
 from pathlib import Path
 
@@ -347,6 +348,44 @@ def cmd_stats(args):
     print()
 
 
+def cmd_quantitative_eda(args):
+    """Generate quantitative EDA plots suitable for ICSME Data Showcase track."""
+    import subprocess
+    from pathlib import Path
+    
+    eda_script = Path(__file__).parent / "eda" / "quantitative_eda.py"
+    cmd = [
+        sys.executable,
+        str(eda_script),
+        "--db", args.db,
+        "--out", args.out,
+    ]
+    if args.show:
+        cmd.append("--show")
+    
+    result = subprocess.run(cmd, cwd=str(Path(__file__).parent))
+    sys.exit(result.returncode)
+
+
+def cmd_qualitative_eda(args):
+    """Generate qualitative EDA plots for internal analysis only."""
+    import subprocess
+    from pathlib import Path
+    
+    eda_script = Path(__file__).parent / "eda" / "qualitative_eda.py"
+    cmd = [
+        sys.executable,
+        str(eda_script),
+        "--db", args.db,
+        "--out", args.out,
+    ]
+    if args.show:
+        cmd.append("--show")
+    
+    result = subprocess.run(cmd, cwd=str(Path(__file__).parent))
+    sys.exit(result.returncode)
+
+
 # ---------------------------------------------------------------------------
 # Argument parser
 # ---------------------------------------------------------------------------
@@ -485,6 +524,38 @@ def build_parser() -> argparse.ArgumentParser:
     # stats
     sub.add_parser("stats", help="Print corpus statistics")
 
+    # quantitative_eda
+    p_quant_eda = sub.add_parser(
+        "quantitative-eda",
+        help="Generate quantitative EDA plots (ICSME Data Showcase track)"
+    )
+    p_quant_eda.add_argument(
+        "--db", default="data/corpus.db", help="Path to database (default: data/corpus.db)"
+    )
+    p_quant_eda.add_argument(
+        "--out", default="output/eda/quantitative",
+        help="Base output directory for plots"
+    )
+    p_quant_eda.add_argument(
+        "--show", action="store_true", help="Display plots interactively instead of saving"
+    )
+
+    # qualitative_eda
+    p_qual_eda = sub.add_parser(
+        "qualitative-eda",
+        help="Generate qualitative EDA plots (internal analysis only)"
+    )
+    p_qual_eda.add_argument(
+        "--db", default="data/corpus.db", help="Path to database (default: data/corpus.db)"
+    )
+    p_qual_eda.add_argument(
+        "--out", default="output/eda/qualitative",
+        help="Base output directory for plots"
+    )
+    p_qual_eda.add_argument(
+        "--show", action="store_true", help="Display plots interactively instead of saving"
+    )
+
     return parser
 
 
@@ -505,6 +576,8 @@ COMMAND_MAP = {
     "validate": cmd_validate,
     "run": cmd_run,
     "stats": cmd_stats,
+    "quantitative-eda": cmd_quantitative_eda,
+    "qualitative-eda": cmd_qualitative_eda,
 }
 
 if __name__ == "__main__":

@@ -18,7 +18,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
-from eda_common import qdf, lang_display, save_or_show, LANG_ORDER
+from ..eda_common import qdf, lang_display, save_or_show, LANG_ORDER
 
 # Color palette for categories (semantic: primary patterns first)
 CATEGORY_COLORS = {
