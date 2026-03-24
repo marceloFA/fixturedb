@@ -150,6 +150,9 @@ def export_dataset(version: str = "1.0", include_raw_source: bool = False) -> Pa
             exclude_cols=["raw_source"],
         )
 
+    # --- Language-specific fixture CSVs (for Zenodo) ---
+    _export_language_specific_fixtures(conn, staging)
+
     conn.close()
 
     # --- README ---
@@ -179,6 +182,82 @@ def _export_table(
         df = df.drop(columns=[c for c in exclude_cols if c in df.columns])
     df.to_csv(dest, index=False)
     logger.info(f"  {table}: {len(df):,} rows → {dest.name}")
+
+
+def _export_language_specific_fixtures(conn: sqlite3.Connection, staging: Path) -> None:
+    """
+    Export fixtures as language-specific CSVs (one row per fixture, with repo context).
+    
+    Each CSV includes:
+    - Repository info (full_name, github_id, stars, etc.)
+    - Fixture metadata (name, fixture_type, scope, LOC, complexity)
+    - Mock usage count for this fixture
+    - Test file metadata
+    - GitHub URL to the exact fixture location in the source
+    
+    Generated files: fixtures_python.csv, fixtures_java.csv, etc.
+    """
+    languages = ["python", "java", "javascript", "typescript", "go", "csharp"]
+    
+    for lang in languages:
+        # Query: one row per fixture with all related data
+        query = """
+        SELECT
+            r.github_id,
+            r.full_name,
+            r.pinned_commit,
+            r.stars,
+            r.forks,
+            tf.relative_path as test_file_path,
+            f.id as fixture_id,
+            f.name as fixture_name,
+            f.fixture_type,
+            f.scope,
+            f.start_line,
+            f.end_line,
+            f.loc,
+            f.cyclomatic_complexity,
+            f.num_objects_instantiated,
+            f.num_external_calls,
+            f.num_parameters,
+            f.has_yield,
+            f.category,
+            COALESCE(mock_count.count, 0) as num_mocks,
+            COUNT(DISTINCT m1.framework) as num_mock_frameworks
+        FROM fixtures f
+        JOIN repositories r ON f.repo_id = r.id
+        JOIN test_files tf ON f.file_id = tf.id
+        LEFT JOIN (
+            SELECT fixture_id, COUNT(*) as count
+            FROM mock_usages
+            GROUP BY fixture_id
+        ) mock_count ON f.id = mock_count.fixture_id
+        LEFT JOIN mock_usages m1 ON f.id = m1.fixture_id
+        WHERE r.language = ? AND r.status = 'analysed'
+        GROUP BY f.id
+        ORDER BY r.stars DESC, r.full_name, f.id
+        """
+        
+        df = pd.read_sql(query, conn, params=(lang,))
+        
+        if len(df) > 0:
+            # Add GitHub URL column (direct link to the fixture in the source)
+            df['github_url'] = df.apply(
+                lambda row: f"https://github.com/{row['full_name']}/blob/{row['pinned_commit']}/{row['test_file_path']}#L{row['start_line']}",
+                axis=1
+            )
+            
+            # Reorder columns: put github_url early for easy access
+            cols = df.columns.tolist()
+            cols.remove('github_url')
+            cols.insert(5, 'github_url')  # Insert after test_file_path
+            df = df[cols]
+            
+            dest = staging / f"fixtures_{lang}.csv"
+            df.to_csv(dest, index=False)
+            logger.info(f"  fixtures_{lang}: {len(df):,} fixtures → {dest.name}")
+        else:
+            logger.info(f"  fixtures_{lang}: 0 fixtures (no data)")
 
 
 def _write_readme(path: Path, version: str) -> None:
