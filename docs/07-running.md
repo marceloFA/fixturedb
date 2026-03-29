@@ -1,5 +1,25 @@
 # Running the Pipeline
 
+## Quick Start (Toy Dataset)
+
+For rapid validation after code changes, use the toy dataset:
+
+```bash
+# Build toy dataset: 10 repos per language (~60 repos total)
+python pipeline.py toy
+
+# Toy dataset for a single language
+python pipeline.py toy --language python
+```
+
+The `toy` command executes the full pipeline (search → clone → extract → classify)
+on a small, representative sample of repositories. Completes in minutes and useful
+for:
+- Validating recent code changes
+- Testing new features before full runs
+- Debugging the collection pipeline
+- Quick accuracy checks on fixture detection
+
 ## Full run (recommended)
 
 ```bash

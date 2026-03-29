@@ -2,6 +2,20 @@
 
 This document describes all CSV files exported when running `python pipeline.py export`.
 
+## Excluded Columns (Database-Only)
+
+The following columns exist in the SQLite database but are intentionally excluded from CSV exports:
+
+| Table | Column | Type | Reason |
+|-------|--------|------|--------|
+| `fixtures` | `raw_source` | TEXT | Full source text; too large for CSV (available in SQLite) |
+| `fixtures` | `category` | TEXT | RQ1 taxonomy classification; subjective, for internal analysis |
+| `mock_usages` | `mock_style` | TEXT | Subjective classification (stub, mock, spy, fake) |
+| `mock_usages` | `target_layer` | TEXT | Subjective classification (boundary, infrastructure, internal, framework) |
+| `mock_usages` | `raw_snippet` | TEXT | Source code snippet; redundant with GitHub URL in language-specific CSVs |
+
+Column names and rationale documented here to clarify schema discrepancies between SQLite and CSV exports.
+
 ## Export Structure
 
 The export generates the following CSV files:
@@ -69,7 +83,7 @@ One row per test file found during repository analysis.
 
 One row per fixture definition found during extraction.
 
-**Note:** `raw_source` and `category` columns are excluded from CSV export (see below).
+**Excluded columns:** `raw_source`, `category` (see [Excluded Columns](#excluded-columns-database-only) table above)
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -89,15 +103,11 @@ One row per fixture definition found during extraction.
 | `num_parameters` | INT | Number of function parameters |
 | `framework` | TEXT | Detected testing framework (pytest, unittest, junit, nunit, testify, etc.) |
 
-**Excluded columns (database-only):**
-- `raw_source` — Full source text of fixture (available in SQLite database)
-- `category` — RQ1 taxonomy classification (subjective; for internal analysis only)
-
 ## 4. mock_usages.csv
 
 One row per mock call detected inside a fixture.
 
-**Note:** Classification fields and raw code snippet are excluded from CSV export (see below).
+**Excluded columns:** `mock_style`, `target_layer`, `raw_snippet` (see [Excluded Columns](#excluded-columns-database-only) table above)
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -107,11 +117,6 @@ One row per mock call detected inside a fixture.
 | `framework` | TEXT | Detected mock framework (unittest_mock, pytest_mock, mockito, jest, sinon, moq, etc.) |
 | `target_identifier` | TEXT | String passed to the mock call (e.g., "mymodule.HttpClient") |
 | `num_interactions_configured` | INT | Count of return_value / thenReturn / side_effect style calls |
-
-**Excluded columns (database-only):**
-- `mock_style` — Subjective classification (stub, mock, spy, fake)
-- `target_layer` — Subjective classification (boundary, infrastructure, internal, framework)
-- `raw_snippet` — Source code snippet (redundant with github_url in language-specific CSVs)
 
 ## 5. Language-Specific Fixture CSVs (fixtures_<language>.csv)
 

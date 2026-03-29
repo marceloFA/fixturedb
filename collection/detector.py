@@ -1,20 +1,50 @@
 """
 AST-based fixture and mock detector using Tree-sitter.
 
-For each language we define:
-  1. how to identify test files (path heuristics already applied upstream)
-  2. how to identify fixture *definitions* inside a test file
-  3. how to identify mock *usages* inside a fixture subtree
+FIXTURE DETECTION APPROACH
+===========================
 
-The public interface is:
-    extract_fixtures(file_path: Path, language: str) -> ExtractResult
+For each of the 6 supported languages, we define:
+
+1. **Fixture patterns** — How to identify fixture *definitions* in a test file
+   - Python: Functions decorated with @pytest.fixture or @unittest setUp/tearDown
+   - Java: Methods with @Before/@BeforeClass, @Setup, or @Test annotations
+   - JavaScript/TypeScript: Functions named beforeEach/beforeAll/describe/setUp
+   - Go: Functions starting with Test/, functions using testing.T
+   - C#: Methods with [SetUp], [Fixture], or [Test] attributes
+   
+   Pattern matching uses tree-sitter AST node types that are
+   language-agnostic (e.g., 'function_declaration', 'decorator', etc.)
+
+2. **Mock patterns** — How to identify mock usages within a fixture
+   Uses regex-based heuristics to detect mock framework calls:
+   - unittest_mock (Python), Mockito (Java), Jest (JS), Sinon (JS), etc.
+   - ~40 framework-specific patterns across 12 mock frameworks
+   - Detects both mock *instantiation* and mock *usage*
+
+3. **Fixture metrics** — Quantitative properties of the fixture
+   - LOC: Lines of code (non-blank)
+   - Cyclomatic Complexity: Branch count (if, for, while, case, catch)
+   - Cognitive Complexity: Nesting-depth-weighted branch count (user-facing)
+   - num_objects_instantiated: Count of new X(...) constructor calls
+   - num_external_calls: Count of I/O patterns (db, file, http, network, etc.)
+   - num_parameters: Function signature parameter count
+
+PUBLIC INTERFACE
+================
+
+extract_fixtures(file_path: Path, language: str) -> ExtractResult
 
 ExtractResult contains:
-  - fixtures: list[FixtureResult] - all fixture definitions found
-  - file_loc: int - non-blank lines of code in the file
-  - num_test_functions: int - count of test functions in the file
+  - fixtures: list[FixtureResult] — all fixture definitions found
+  - file_loc: int — non-blank lines of code in the file
+  - num_test_functions: int — count of test functions in the file
 
-Each FixtureResult carries all the fields needed to populate the DB tables.
+Each FixtureResult carries all the fields needed to populate the DB tables:
+  fixture_type, scope, start_line, end_line, loc, 
+  cyclomatic_complexity, cognitive_complexity,
+  num_objects_instantiated, num_external_calls, num_parameters,
+  framework (mock framework used, if any), raw_source text
 """
 
 import re
@@ -22,11 +52,9 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
+from collection.config import MAX_FILE_SIZE_BYTES
 
-# Maximum file size to process (5 MB). Test files should never be this large.
-# Files larger than this are likely generated code, data files, or corrupted.
-MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Lazy-load Tree-sitter grammars to avoid import overhead when unused
@@ -116,10 +144,12 @@ class ExtractResult:
 
 
 def _source(node, src_bytes: bytes) -> str:
+    """Extract source code text for a tree-sitter node."""
     return src_bytes[node.start_byte : node.end_byte].decode("utf-8", errors="replace")
 
 
 def _count_loc(text: str) -> int:
+    """Count non-blank lines of code in a text string."""
     return sum(1 for line in text.splitlines() if line.strip())
 
 

@@ -1,11 +1,49 @@
 """
-GitHub search layer.
+GitHub repository search and discovery layer.
 
 Searches the GitHub REST API for repositories matching per-language criteria,
-applies exclusion filters, and writes candidate repos to the database.
+applies quality filters, and writes candidate repos to the database.
 
-Usage:
-    python -m scripts.collect_repos --language python --max 200
+COLLECTION STRATEGIES
+=====================
+
+Three strategies are available for discovery, selectable per language:
+
+1. **Star-count sorting (DEFAULT)** — collect in order of popularity
+   Most popular repos first (API default sort), maximizing high-quality
+   (500+ star) repositories early. Good for rapid core corpus buildup.
+   
+2. **Stratified/temporal sampling** — collect proportionally from each year
+   Avoids temporal bias; represents testing practice evolution rather than
+   being skewed toward legacy codebases. Use for diachronic studies.
+
+3. **Chronological (legacy)** — collect oldest-first
+   Original approach; no longer recommended due to temporal bias.
+
+FILTERING RULES
+===============
+
+Applied at GitHub API level:
+  - language: {language}
+  - stars: >= min_stars (default 100, can override to 500 for 'core' tier)
+  - fork: false (exclude forks)
+  - is: public (public repos only)
+
+Applied at metadata level (before DB insert):
+  - NOT in EXCLUSION_KEYWORDS (tutorial, demo, homework, etc.)
+  - NOT archived (archived:true repos skipped)
+  - NOT empty (size > 0)
+  - NOT fork (redundant check)
+
+SURVIVAL RATES
+==============
+
+Empirically observed discovery → analyzed conversion rates for each language.
+Used by the `collect` command to calculate how many repos to search for
+to reach a target number of analyzable repos. E.g., if Python has 7.6%
+survival rate and we want 400 analyzed repos, we search for ~5,260 repos.
+
+See LANGUAGE_SURVIVAL_RATES in config.py for current per-language rates.
 """
 
 import time

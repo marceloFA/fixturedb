@@ -17,6 +17,8 @@ from collection.config import (
     MIN_FIXTURES_FOUND,
     EXTRACT_WORKERS,
     FILE_EXTRACTION_TIMEOUT,
+    MAX_FILE_SIZE_BYTES,
+    NON_CODE_EXTENSIONS,
 )
 from collection.cloner import get_clone_path, delete_clone
 from collection.db import (
@@ -34,10 +36,6 @@ from collection.db import (
 from collection.detector import extract_fixtures
 
 logger = logging.getLogger(__name__)
-
-# Maximum file size to process (5 MB). Test files should never be this large.
-# Files larger than this are likely generated code, data files, or corrupted.
-MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB
 
 
 # ---------------------------------------------------------------------------
@@ -57,19 +55,36 @@ def extract_fixtures_with_timeout(
     """
     Extract fixtures from a test file with a timeout.
 
-    Uses ThreadPoolExecutor to run extraction in a controlled way that allows
-    timeout enforcement even when called from worker threads.
+    TIMEOUT STRATEGY
+    ================
+    
+    Tree-sitter AST parsing can hang indefinitely on certain malformed or
+    pathological code patterns. Two failure modes seen in practice:
+    
+    1. **Parser bugs**: Some language grammars have infinite loops on
+       corner cases (e.g., deeply nested parentheses, unusual token sequences)
+    2. **Exotic/synthetic code**: Generated test data, decompiled code, or
+       intentionally obfuscated code can trigger exponential backtracking
+    
+    Timeout prevents:
+    - A single pathological file from blocking the entire extraction phase
+    - Memory exhaustion from pathological inputs
+    - Worker threads hanging indefinitely (requires ThreadPoolExecutor)
+    
+    Uses ThreadPoolExecutor to run extraction in a separate thread, allowing
+    timeout enforcement even when called from existing worker threads. On
+    timeout, returns empty ExtractResult to mark the file as skipped.
 
     Args:
         tf_path: Path to the test file
         language: Programming language
-        timeout: Maximum seconds to spend on this file
+        timeout: Maximum seconds to spend on this file (default: 5s from config)
 
     Returns:
-        ExtractResult with fixtures and file-level metrics, or empty result if timeout exceeded
+        ExtractResult with fixtures and file-level metrics
 
     Raises:
-        ExtractionTimeoutError: If extraction takes too long
+        ExtractionTimeoutError: If extraction takes longer than timeout
     """
     from concurrent.futures import (
         ThreadPoolExecutor,
@@ -116,132 +131,6 @@ def _find_test_files(repo_dir: Path, language: str) -> list[Path]:
         "third-party",
         "resources",
         "resource",  # test resource data directories
-    }
-
-    # Non-source-code file extensions to skip (resource files, data, config, etc.)
-    NON_CODE_EXTENSIONS = {
-        ".txt",
-        ".json",
-        ".xml",
-        ".yaml",
-        ".yml",
-        ".properties",
-        ".md",
-        ".csv",
-        ".tsv",
-        ".sql",
-        ".html",
-        ".css",
-        ".scss",
-        ".less",
-        ".svg",
-        ".png",
-        ".jpg",
-        ".jpeg",
-        ".gif",
-        ".ico",
-        ".tga",  # Targa image files
-        ".ivf",  # Indeo video files
-        ".gbk",  # Game Boy ROM files
-        # Audio files
-        ".mp3",
-        ".ogg",
-        ".wav",
-        ".flac",
-        ".aac",
-        ".m4a",
-        ".wma",
-        ".opus",
-        ".aiff",
-        ".alac",
-        ".ape",
-        ".woff",
-        ".woff2",
-        ".ttf",
-        ".eot",
-        ".map",
-        ".lock",
-        ".yarn",  # Yarn package manager files
-        ".log",
-        ".out",  # Compiled output/test output files
-        ".tmp",
-        ".mod",
-        ".sum",  # Go dependency files
-        ".dot",  # Graph visualization files
-        ".geom",  # Geometry/geospatial files
-        ".osm",  # OpenStreetMap data files
-        ".pdb",
-        ".shp",  # Shapefile geospatial data
-        ".dat",  # General data files
-        ".mlmodel",  # Core ML model files
-        ".fasta",
-        ".fax",
-        ".sam",
-        ".req",
-        ".otf",
-        ".xhtml",
-        ".mp4",
-        ".bd.fast",  # Build dependency cache files
-        ".bd.fasta",  # Build dependency cache files
-        ".bd",  # Build dependency files
-        ".db",  # Database files
-        ".dbf",  # dBASE database files
-        # C# / .NET ecosystem files
-        ".gucx",  # Gum UI framework files
-        ".gusx",  # Gum UI framework files
-        ".resx",  # Windows Forms resource files
-        ".xaml",  # WPF/MAUI UI definition files
-        ".csproj",  # C# project files
-        ".vbproj",  # VB.NET project files
-        ".sln",  # Solution files
-        ".nuspec",  # NuGet package specification
-        ".props",  # MSBuild property files
-        ".targets",  # MSBuild target files
-        ".ruleset",  # Code analysis ruleset files
-        ".editorconfig",  # Editor configuration
-        # Game engine files (Unity, etc.)
-        ".unity",  # Unity scene files
-        ".prefab",  # Unity prefab files
-        ".anim",  # Unity animation files
-        ".controller",  # Unity animator controller
-        ".mat",  # Unity material files
-        ".asset",  # Unity asset files
-        ".uxml",  # Unity UI Toolkit files
-        # Compressed archives
-        ".zip",
-        ".ttl",  # Turtle RDF files
-        ".srx",  # Speech recognition grammar files
-        ".golden",  # Golden files for test fixtures
-        ".snap",  # Snapshot files for test fixtures
-        ".input",  # Input data files for tests
-        ".expected",  # Expected output files for tests
-        ".actual",  # Actual output files for tests
-        ".out",  # General output files
-        ".rar",
-        ".7z",
-        ".tar",
-        ".gz",
-        ".bz2",
-        ".xz",
-        ".iso",
-        ".flf",
-        ".il",
-        ".snapshot",
-        ".raw",
-        ".tokens",
-        ".dmg",
-        ".pdf",  # Documentation files
-        ".docx",
-        ".exe",  # Windows executables/installers
-        ".msi",  # Windows installer
-        ".dll",  # Windows dynamic link libraries
-        ".so",  # Unix shared objects
-        ".dylib",  # macOS dynamic libraries
-        ".apk",  # Android package
-        ".aar",  # Android archive library
-        ".jar",  # Java archive
-        ".war",  # Web archive
-        ".ear",  # Enterprise archive
     }
 
     test_files: list[Path] = []

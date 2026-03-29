@@ -20,6 +20,25 @@ All collection parameters live in `collection/config.py`.
 | `core`     | ≥ 500         | Hamster (arXiv:2509.26204) selection criterion |
 | `extended` | 100–499       | Common MSR floor; adds diversity |
 
+## Language Survival Rates
+
+**Survival rate** = (discovered repos with ≥1 analyzed fixture) / (repos fetched from GitHub API)
+
+Used for discovery forecasting: if we need 500 analyzed fixtures in Python, and Python's survival rate is 0.076, we must discover ~6,579 repos.
+
+| Language       | Survival Rate | Notes |
+|----------------|---------------|-------|
+| Python         | 7.6%          | Empirically observed from completed collection |
+| Java           | 15%           | Estimate; Java typically has higher fixture density |
+| C#             | 10%           | Estimate; .NET ecosystem well-established |
+| Go             | 9%            | Estimate; growing ecosystem |
+| JavaScript     | 8%            | Estimate; frontend-heavy selection, fewer server-side fixtures |
+| TypeScript     | 8%            | Estimate; similar pattern to JavaScript |
+| **Default**    | 9%            | Fallback if language not listed above |
+
+Survival rates are periodically updated as collection completes for each language.
+Lower rates = harder to find qualifying repos; higher rates = abundant fixture usage.
+
 ## Quality filters (post-clone)
 
 | Parameter             | Default | Effect |

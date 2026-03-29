@@ -111,10 +111,21 @@ For each mock framework detected, the fixture records:
 For each detected fixture, the system computes:
 
 - **LOC** (Lines of Code): Non-blank lines excluding comments
+
 - **Cyclomatic Complexity**: Simple proxy counting branching keywords (if, for, while, try/catch, etc.)
+
+- **Cognitive Complexity**: A refinement of cyclomatic complexity that weights control structures by nesting depth and detects recursion. 
+    - Formula: Cognitive Complexity = Σ(nesting_depth) over all control structures + 5 × (number of recursive calls)
+    - Example: three nested if-statements at depths 1, 2, 3 contribute 1+2+3 = 6 to cognitive complexity (vs. cyclomatic complexity of 3)
+    - Rationale: Nested code is harder to understand than flat code; nesting depth better reflects human cognitive burden
+    - See `collection/detector.py` for implementation via tree-sitter AST traversal
+
 - **Object Instantiations**: Count of `new Foo(...)` calls and constructor-like calls
+
 - **External Calls**: Count of database, HTTP, file I/O, and environment access patterns
+
 - **Parameters**: Number of parameters/injection points
+
 - **Has Yield**: Boolean indicating generator/yield expressions (Python fixtures)
 
 These metrics support RQ1 fixture taxonomy classification and fixture quality analysis.

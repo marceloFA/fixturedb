@@ -1,24 +1,130 @@
 """
-Fixture taxonomy classifier — categorizes fixtures into usage patterns.
+Fixture taxonomy classifier — categorizes fixtures into semantic usage patterns (RQ1 taxonomy).
 
-Assigns one of eight category labels to each fixture based on:
-  - structural metadata (LOC, complexity, num_objects_instantiated, etc.)
-  - mock framework usage (from mock_usages table)
-  - keywords in raw_source text
+This module implements a multi-level classification approach to map test fixtures into 
+semantic categories that represent distinct, actionable testing concerns. The taxonomy 
+was developed to answer RQ1: What are the primary roles/purposes of test fixtures in 
+real-world projects?
 
-Categories (RQ1 taxonomy):
-  - data_builder:         constructs/initializes test data
-  - service_setup:        wires dependencies and services
-  - environment:          manages environment, files, databases
-  - resource_management:  handles resource allocation/cleanup
-  - mock_setup:           creates mocks, stubs, spies for test isolation
-  - state_reset:          resets global/shared state between tests
-  - configuration_setup:  configures settings, env vars, feature flags
-  - hybrid:               combination of above patterns
+CLASSIFICATION APPROACH
+=======================
+Classification is performed in five decision-making layers, each contributing evidence
+to determine fixture category membership:
 
-Usage:
-    from collection.fixture_classifier import categorize_all
+    Layer 1: Keyword Pattern Matching
+    --------------------------------
+    Regex patterns are applied to the fixture's raw source code to detect semantic 
+    keywords indicative of each category. For example:
+      - Keywords: 'mock', 'stub', 'spy', 'fake' → mock_setup likely
+      - Keywords: 'file', 'database', 'temp', 'path' → environment likely
+      - Keywords: 'create', 'build', 'construct', 'factory' → data_builder likely
+    Pattern matching is case-insensitive and fast (simple regex, not AST parsing).
+    See CATEGORY_KEYWORDS dict for complete keyword specifications.
+
+    Layer 2: Mock Framework Usage Detection
+    ----------------------------------------
+    If the fixture uses detected mock frameworks (tracked in mock_usages table),
+    mock_setup category is added to candidates.
+
+    Layer 3: Structural Feature Heuristics
+    ----------------------------------------
+    Metrics extracted by the detector module provide hints:
+      - num_parameters >= 2: likely service_setup (injecting dependencies)
+      - num_objects_instantiated >= 3: likely data_builder (creating test data)
+      - num_external_calls >= 2: likely environment (I/O, file, database operations)
+
+    Layer 4: Scope-Based Hints
+    --------------------------
+    Fixture scope metadata influences classification:
+      - scope ∈ {per_module, global}: add state_reset (shared state management)
+
+    Layer 5: Complexity-Based Tiebreaker
+    ------------------------------------
+    High complexity (cyclomatic >= 3) without other category matches suggests
+    the fixture is doing "multiple things" → hybrid.
+
+CATEGORY DEFINITIONS (RQ1 Taxonomy)
+===================================
+
+data_builder:
+    Purpose: Creates, initializes, or constructs test data structures.
+    Indicators: Calls to factory methods, builder patterns, data structure construction.
+    Example: "creates_user_with_profile()" — builds test user objects.
+
+service_setup:
+    Purpose: Wires dependencies, injects services, configures DI containers.
+    Indicators: Multiple parameters (injected dependencies), @Provide/@Bean annotations.
+    Example: "setup_service_registry()" — registers services in a container.
+
+environment:
+    Purpose: Manages external resources: files, databases, network, environment vars.
+    Indicators: File I/O, database connections, temp directories, environment variables.
+    Example: "temporary_database()" — creates isolated test database.
+
+resource_management:
+    Purpose: Allocates, configures, releases resources via context managers or cleanup.
+    Indicators: context managers, finally blocks, open/close/acquire/release patterns.
+    Example: "http_server_context()" — starts/stops a test HTTP server.
+
+mock_setup:
+    Purpose: Creates mock objects, stubs, spies for test isolation and behavior verification.
+    Indicators: Direct mock framework usage (unittest.mock, pytest-mock, Jest, Mockito, etc.).
+    Example: "mocked_api_client()" — creates a stub for an external API.
+
+state_reset:
+    Purpose: Resets global state, clears caches, resets databases between test runs.
+    Indicators: reset(), clear(), flush(), truncate() patterns; module/global scope.
+    Example: "clear_global_cache()" — empties application cache.
+
+configuration_setup:
+    Purpose: Configures application settings, environment variables, feature flags.
+    Indicators: Configuration objects, environment variable assignment, feature flags.
+    Example: "configured_app()" — sets up app with test configuration.
+
+hybrid:
+    Purpose: Combination of multiple categories that don't fit neatly into one.
+    Triggers: Multiple categories matched at equal strength, or no category matched.
+    Rationale: Complex fixtures often serve multiple purposes. Hybrid preserves visibility
+              that fixture is multi-purpose but doesn't force artificial categorization.
+
+DECISION TREE
+=============
+The final category is determined by:
+    1. Match all keyword patterns + mock usage + structural heuristics
+    2. If zero matches: return "hybrid" (unknown/underspecified)
+    3. If exactly one match: return that category
+    4. If multiple matches:
+         - If mock_count >= 2 AND "mock_setup" is candidate: return "mock_setup"
+         - If num_objects_instantiated >= 5 AND "data_builder" is candidate: return "data_builder"
+         - Otherwise: return "hybrid" (genuine multi-purpose)
+
+This tiering ensures:
+    - Strong signals (e.g., heavy mocking) dominate weak signals
+    - Ambiguous fixtures are marked as hybrid rather than arbitrarily assigned
+    - Classification remains interpretable: humans can verify based on explicit rules
+
+USAGE
+=====
+    from collection.fixture_classifier import categorize_all, _classify_fixture
+
+    # Batch categorize all uncategorized fixtures
     counts = categorize_all()
+    print(f"Categorized: {counts}")
+
+    # Manually categorize a single fixture
+    category = _classify_fixture(
+        fixture_id=123,
+        fixture_type="function",
+        scope="function",
+        loc=10,
+        cyclomatic_complexity=1,
+        num_objects_instantiated=2,
+        num_external_calls=0,
+        num_parameters=1,
+        raw_source="@pytest.fixture\\ndef setup_test(): return build_obj()",
+        mock_count=0
+    )
+    print(f"Category: {category}")
 """
 
 import logging

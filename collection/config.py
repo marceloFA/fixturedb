@@ -36,6 +36,161 @@ GITHUB_RATE_LIMIT_URL = f"{GITHUB_API_BASE}/rate_limit"
 REQUEST_DELAY = 2.0
 
 # ---------------------------------------------------------------------------
+# File size and type filters
+# ---------------------------------------------------------------------------
+
+# Maximum file size to process (5 MB)
+# Test files should never exceed this. Files larger are likely generated code,
+# data files, or corrupted blobs. Prevents consuming excessive memory with
+# large binary files or generated test data.
+MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB
+
+# Non-source-code file extensions to skip (resource files, data, config, etc.)
+# These are checked to avoid parsing non-code files that slipped through name/path filters.
+NON_CODE_EXTENSIONS = {
+    # Document & markup formats
+    ".txt",
+    ".md",
+    ".rst",
+    ".pdf",
+    ".docx",
+    ".xhtml",
+    # Data formats
+    ".json",
+    ".xml",
+    ".yaml",
+    ".yml",
+    ".csv",
+    ".tsv",
+    ".sql",
+    ".properties",
+    ".dat",
+    ".ttl",  # Turtle RDF files
+    ".pdb",
+    ".osm",  # OpenStreetMap data
+    # Web assets
+    ".html",
+    ".css",
+    ".scss",
+    ".less",
+    # Images
+    ".svg",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".ico",
+    ".tga",
+    ".ivf",
+    ".gbk",
+    # Audio & Video
+    ".mp3",
+    ".ogg",
+    ".wav",
+    ".flac",
+    ".aac",
+    ".m4a",
+    ".wma",
+    ".opus",
+    ".aiff",
+    ".alac",
+    ".ape",
+    ".mp4",
+    # Fonts
+    ".woff",
+    ".woff2",
+    ".ttf",
+    ".eot",
+    ".otf",
+    # Build/Config artifacts
+    ".map",
+    ".lock",
+    ".yarn",
+    ".log",
+    ".out",
+    ".tmp",
+    ".mod",  # Go
+    ".sum",  # Go
+    ".dot",  # Graph visualization
+    # Geospatial files
+    ".geom",
+    ".shp",
+    # Models & ML
+    ".mlmodel",
+    # Bioinformatics
+    ".fasta",
+    ".fax",
+    ".sam",
+    ".req",
+    # Build dependency cache
+    ".bd.fast",
+    ".bd.fasta",
+    ".bd",
+    # Databases
+    ".db",
+    ".dbf",
+    # C# / .NET ecosystem
+    ".gucx",
+    ".gusx",
+    ".resx",
+    ".xaml",
+    ".csproj",
+    ".vbproj",
+    ".sln",
+    ".nuspec",
+    ".props",
+    ".targets",
+    ".ruleset",
+    ".editorconfig",
+    # Game engine files (Unity)
+    ".unity",
+    ".prefab",
+    ".anim",
+    ".controller",
+    ".mat",
+    ".asset",
+    ".uxml",
+    # Compressed archives
+    ".zip",
+    ".rar",
+    ".7z",
+    ".tar",
+    ".gz",
+    ".bz2",
+    ".xz",
+    ".iso",
+    ".dmg",
+    # Programming/Analysis formats
+    ".flf",
+    ".il",
+    ".snapshot",
+    ".raw",
+    ".tokens",
+    # Test fixtures and snapshots
+    ".golden",
+    ".snap",
+    ".input",
+    ".expected",
+    ".actual",
+    # Windows
+    ".exe",
+    ".msi",
+    ".dll",
+    # Unix
+    ".so",
+    ".dylib",  # macOS dynamic libraries
+    # Mobile
+    ".apk",
+    ".aar",  # Android archive library
+    # Java archives
+    ".jar",
+    ".war",
+    ".ear",
+    # Speech recognition
+    ".srx",
+}
+
+# ---------------------------------------------------------------------------
 # Repository search filters
 # ---------------------------------------------------------------------------
 
