@@ -19,15 +19,20 @@ from pathlib import Path
 
 import pandas as pd
 
-from eda_common import load_db, setup_style
+from .eda_common import load_db, setup_style
 
 # Import plot functions from quantitative submodule
-from quantitative.p01_corpus_composition import plot_corpus_composition
-from quantitative.p02_star_distribution import plot_star_distribution
-from quantitative.p03_age_and_activity import plot_age_and_activity
-from quantitative.p05_stars_vs_forks import plot_fork_star_ratio
-from quantitative.p06_fixture_overview import plot_fixture_overview
-from quantitative.p07_mock_prevalence import plot_mock_prevalence
+from .quantitative.p01a_corpus_by_tier import plot_corpus_by_tier
+from .quantitative.p01b_pipeline_status import plot_pipeline_status
+from .quantitative.p02_star_distribution import plot_star_distribution
+from .quantitative.p03a_creation_timeline import plot_creation_timeline
+from .quantitative.p03b_activity_recency import plot_activity_recency
+from .quantitative.p05_stars_vs_forks import plot_fork_star_ratio
+from .quantitative.p06a_fixtures_per_repo import plot_fixtures_per_repo
+from .quantitative.p06b_fixture_scope import plot_fixture_scope
+from .quantitative.p07a_mock_adoption import plot_mock_adoption
+from .quantitative.p07b_framework_diversity import plot_framework_diversity
+from .quantitative.p07c_mock_styles import plot_mock_styles
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -75,12 +80,17 @@ def main():
 
     # Quantitative plots only (no subjectivity bias)
     plots = [
-        ("Corpus Composition", plot_corpus_composition),
+        ("Corpus by Tier", plot_corpus_by_tier),
+        ("Pipeline Status", plot_pipeline_status),
         ("Star Distribution", plot_star_distribution),
-        ("Age & Activity", plot_age_and_activity),
+        ("Creation Timeline", plot_creation_timeline),
+        ("Activity Recency", plot_activity_recency),
         ("Stars vs Forks", plot_fork_star_ratio),
-        ("Fixture Overview", plot_fixture_overview),
-        ("Mock Prevalence", plot_mock_prevalence),
+        ("Fixtures per Repo", plot_fixtures_per_repo),
+        ("Fixture Scope", plot_fixture_scope),
+        ("Mock Adoption", plot_mock_adoption),
+        ("Framework Diversity", plot_framework_diversity),
+        ("Mock Styles", plot_mock_styles),
     ]
 
     for name, fn in plots:

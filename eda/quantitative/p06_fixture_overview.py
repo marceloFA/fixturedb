@@ -33,7 +33,7 @@ def plot_fixture_overview(conn, out_dir, show):
     fixtures = qdf(
         conn,
         """
-        SELECT f.fixture_type, r.language, r.full_name
+        SELECT f.fixture_type, f.scope, r.language, r.full_name
         FROM fixtures f
         JOIN repositories r ON f.repo_id = r.id
         WHERE r.status = 'analysed'
