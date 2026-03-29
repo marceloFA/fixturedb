@@ -214,6 +214,8 @@ def _find_test_files(repo_dir: Path, language: str) -> list[Path]:
         ".iso",
         ".flf",
         ".il",
+        ".snapshot",
+        ".raw",
         ".tokens",
         ".dmg",
         ".pdf",  # Documentation files
