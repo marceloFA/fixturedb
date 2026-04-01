@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS repositories (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     github_id       INTEGER UNIQUE NOT NULL,
     full_name       TEXT NOT NULL,          -- e.g. "pytest-dev/pytest"
-    language        TEXT NOT NULL,          -- normalised: python/java/javascript/typescript/go/csharp
+    language        TEXT NOT NULL,          -- normalised: python/java/javascript/typescript/go
     stars           INTEGER,
     forks           INTEGER,
     description     TEXT,

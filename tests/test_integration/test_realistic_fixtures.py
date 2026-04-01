@@ -386,104 +386,6 @@ func setupTestDB(t *testing.T) *Database {
         assert isinstance(fixtures, list)
 
 
-class TestRealWorldCSharpFixtures:
-    """Integration tests using realistic C# test code"""
-
-    def test_xunit_with_collection_fixtures(self):
-        """xUnit test class with collection fixtures"""
-        code = """
-using Xunit;
-using Moq;
-
-public class DatabaseFixture : IAsyncLifetime {
-    private readonly IDatabase _db;
-    
-    public DatabaseFixture() {
-        _db = new TestDatabase();
-    }
-    
-    public async Task InitializeAsync() {
-        await _db.Initialize();
-        await _db.Migrate();
-    }
-    
-    public async Task DisposeAsync() {
-        await _db.Cleanup();
-        _db.Dispose();
-    }
-}
-
-[CollectionDefinition("Database collection")]
-public class DatabaseCollection : ICollectionFixture<DatabaseFixture> {
-}
-
-[Collection("Database collection")]
-public class UserRepositoryTests {
-    private readonly DatabaseFixture _fixture;
-    private readonly Mock<ILogger> _mockLogger;
-    
-    public UserRepositoryTests(DatabaseFixture fixture) {
-        _fixture = fixture;
-        _mockLogger = new Mock<ILogger>();
-    }
-    
-    [Fact]
-    public async Task CreateUser_WithValidData_Success() {
-        var repo = new UserRepository(_fixture.GetConnection(), _mockLogger.Object);
-        var user = await repo.CreateAsync(new User { Name = "Test" });
-        Assert.NotNull(user);
-    }
-}
-"""
-        assert_fixture_detected(code, "csharp", "InitializeAsync")
-        assert_fixture_detected(code, "csharp", "DisposeAsync")
-
-    def test_nunit_with_inheritance(self):
-        """NUnit test with inheritance hierarchy"""
-        code = """
-using NUnit.Framework;
-
-[TestFixture]
-public abstract class BaseRepositoryTests {
-    protected IRepository Repository;
-    protected TestDatabase TestDb;
-    
-    [OneTimeSetUp]
-    public void OneTimeSetUp() {
-        TestDb = new TestDatabase();
-    }
-    
-    [SetUp]
-    public virtual void Setup() {
-        Repository = new Repository(TestDb.GetConnection());
-    }
-    
-    [TearDown]
-    public virtual void TearDown() {
-        TestDb.ClearData();
-    }
-    
-    [OneTimeTearDown]
-    public void OneTimeTearDown() {
-        TestDb.Dispose();
-    }
-}
-
-[TestFixture]
-public class UserRepositoryTests : BaseRepositoryTests {
-    [SetUp]
-    public override void Setup() {
-        base.Setup();
-        ((UserRepository)Repository).Seed();
-    }
-}
-"""
-        assert_fixture_detected(code, "csharp", "OneTimeSetUp")
-        assert_fixture_detected(code, "csharp", "Setup")
-        assert_fixture_detected(code, "csharp", "TearDown")
-        assert_fixture_detected(code, "csharp", "OneTimeTearDown")
-
-
 class TestMultiLanguageConsistency:
     """Validate consistent detection across multiple languages in one test"""
 
@@ -513,15 +415,6 @@ describe('Test', () => {
         resource = createResource();
     });
 });
-""",
-            "csharp": """
-[TestFixture]
-public class Test {
-    [SetUp]
-    public void Setup() {
-        resource = CreateResource();
-    }
-}
 """,
         }
 

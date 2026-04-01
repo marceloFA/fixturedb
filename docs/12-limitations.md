@@ -21,7 +21,7 @@ longitudinal analyses of fixture evolution.
 
 ## Language coverage
 
-This release covers five language variants. Ruby (RSpec), C# (NUnit/xUnit),
+This release covers five language variants. Ruby (RSpec), Python (pytest 7+), Kotlin, Scala, and others are not covered.
 and Rust (built-in test module) are not included.
 
 ## Mock detection completeness

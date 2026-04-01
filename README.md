@@ -57,7 +57,7 @@ For detailed setup, see [docs/06-setup.md](docs/06-setup.md).
 
 FixtureDB is a structured dataset of **test fixture definitions** extracted from
 open-source software repositories on GitHub across **Python, Java, JavaScript,
-TypeScript, Go, and C#**.
+TypeScript, and Go**.
 
 A *test fixture* is any code that prepares or tears down state before or after a test runs.
 For each fixture, the dataset records structural metadata (size, complexity, scope, type)
@@ -75,7 +75,7 @@ FixtureDB focuses exclusively on **quantitative, objective aspects** of test fix
 - **Framework Detection**: Syntactically unambiguous markers only (decorators, annotations, attributes)
   - Python: `@pytest.fixture`, `setUp()`/`tearDown()` methods
   - Java: `@Before`/`@After` annotations
-  - C#: `[SetUp]`/`[TearDown]` attributes (NUnit, MSTest, xUnit)
+
   - Go: `TestMain()` function, `SetupSuite()`/`SetupTest()` methods (testify)
   - JavaScript/TypeScript: AVA's unique `test.before()`/`test.after()` pattern
 

@@ -52,20 +52,6 @@ JavaScript and TypeScript fixtures are detected via testing framework hook calls
   - `beforeAll`, `afterAll` → `per_class`
   - `before`, `after` → `per_test` (ambiguous without full context)
 
-### C#
-
-C# fixtures are detected via attributes on methods:
-
-1. **NUnit framework**: `[SetUp]`/`[TearDown]`/`[OneTimeSetUp]`/`[OneTimeTearDown]`
-2. **xUnit framework**: `[Fact]` and `[Theory]` test methods
-3. **MSTest framework**: `[TestInitialize]`/`[TestCleanup]`/`[ClassInitialize]`/`[ClassCleanup]`
-
-Scope mapping:
-- `[SetUp]`, `[TestInitialize]` → `per_test`
-- `[TearDown]`, `[TestCleanup]` → `per_test`
-- `[OneTimeSetUp]`, `[ClassInitialize]` → `per_class`
-- `[OneTimeTearDown]`, `[ClassCleanup]` → `per_class`
-
 ### Go
 
 Go has no formal fixture annotation system. The detector uses a hybrid approach:
@@ -98,7 +84,6 @@ Mock usage is detected as a separate pass after fixture extraction using 23+ reg
 - **Java**: Mockito, EasyMock, MockK (Kotlin)
 - **JavaScript/TypeScript**: Jest, Sinon, Vitest
 - **Go**: GoMock, Testify/mock
-- **C#**: Moq, NSubstitute, FakeItEasy, Rhino Mocks
 
 For each mock framework detected, the fixture records:
 - Framework name
@@ -114,7 +99,7 @@ For each detected fixture, the system computes:
 
 - **Cyclomatic Complexity**: McCabe complexity via **Lizard library** (https://github.com/terryyin/lizard)
     - Calculated as: 1 + number of decision points (if, for, while, case, catch)
-    - Supported across all 6 languages (Python, Java, JavaScript, TypeScript, Go, C#)
+    - Supported across all 5 languages (Python, Java, JavaScript, TypeScript, Go)
     - Industry-standard metric used by SonarQube and Codecov
 
 - **Cognitive Complexity**: SonarQube-standard complexity metric
@@ -147,7 +132,7 @@ For each detected fixture, the system computes:
     - **Python/pytest**: Detected by presence of `yield` statement (fixture-style cleanup)
     - **Python/unittest**: `tearDown` method paired with `setUp`, `tearDownMethod` paired with `setupMethod`
     - **Java/JUnit**: `@AfterEach`/`@After` or `@AfterAll`/`@AfterClass` in same class as `@BeforeEach`/`@Before`
-    - **C#/NUnit, xUnit**: `[TearDown]`/`[OneTimeTearDown]` paired with corresponding setup attributes
+
     - **Go**: Cleanup registered via `t.Cleanup()` callbacks
     - Indicator of resource cleanup discipline: fixtures without teardown are potential leak indicators
 

@@ -151,7 +151,7 @@ def test_export_language_specific_fixtures(temp_db):
         ), f"GitHub URL mismatch: got {df_java.iloc[0]['github_url']}"
 
         # Check that other language CSVs exist but are empty/not created
-        for lang in ["javascript", "typescript", "go", "csharp"]:
+        for lang in ["javascript", "typescript", "go"]:
             csv_path = staging / f"fixtures_{lang}.csv"
             # These might not exist since we have no data for them
             if csv_path.exists():

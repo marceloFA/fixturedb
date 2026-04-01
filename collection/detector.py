@@ -11,7 +11,6 @@ For each of the 6 supported languages, we define:
    - Java: Methods with @Before/@BeforeClass, @Setup, or @Test annotations
    - JavaScript/TypeScript: Functions named beforeEach/beforeAll/describe/setUp
    - Go: Functions starting with Test/, functions using testing.T
-   - C#: Methods with [SetUp], [Fixture], or [Test] attributes
    
    Pattern matching uses tree-sitter AST node types that are
    language-agnostic (e.g., 'function_declaration', 'decorator', etc.)
@@ -87,7 +86,6 @@ def _get_parser(language: str):
         import tree_sitter_javascript
         import tree_sitter_typescript
         import tree_sitter_go
-        import tree_sitter_c_sharp
         from tree_sitter import Language, Parser
 
         lang_map = {
@@ -96,7 +94,6 @@ def _get_parser(language: str):
             "javascript": Language(tree_sitter_javascript.language()),
             "typescript": Language(tree_sitter_typescript.language_typescript()),
             "go": Language(tree_sitter_go.language()),
-            "csharp": Language(tree_sitter_c_sharp.language()),
         }
         for key, lang in lang_map.items():
             p = Parser(lang)
@@ -282,22 +279,6 @@ MOCK_PATTERNS = [
     (r"gomock\.NewController", "gomock"),
     (r"testify/mock", "testify_mock"),
     (r"\.On\s*\(\s*['\"](\w+)['\"]", "testify_mock"),
-    # C#
-    (r"new\s+Mock<", "moq"),  # Moq
-    (r"Mock\.Of<", "moq"),  # Moq
-    (r"\.Setup\s*\(", "moq"),  # Moq
-    (r"\.Verify\s*\(", "moq"),  # Moq
-    (r"Substitute\.For<", "nsubstitute"),  # NSubstitute
-    (r"\.Received\s*\(", "nsubstitute"),  # NSubstitute
-    (
-        r"\.Returns\s*\(",
-        "nsubstitute",
-    ),  # NSubstitute (also Java Android, but NSubstitute more specific)
-    (r"A\.Fake<", "fakeiteasy"),  # FakeItEasy
-    (r"\.MustHaveHappened\s*\(", "fakeiteasy"),  # FakeItEasy
-    (r"MockRepository\.GenerateMock<", "rhino_mocks"),  # Rhino Mocks
-    (r"\.Expect\s*\(", "rhino_mocks"),  # Rhino Mocks
-    (r"\.VerifyAllExpectations\s*\(", "rhino_mocks"),  # Rhino Mocks
 ]
 
 
@@ -732,137 +713,7 @@ def _detect_js(tree, src_bytes: bytes, language: str = 'javascript') -> list[Fix
 
 
 # ---------------------------------------------------------------------------
-# C# detector
-# ---------------------------------------------------------------------------
 
-CSHARP_FIXTURE_ATTRIBUTES = {
-    "SetUp": ("nunit_setup", "per_test"),
-    "TearDown": ("nunit_teardown", "per_test"),
-    "OneTimeSetUp": ("nunit_onetimesetup", "per_class"),
-    "OneTimeTearDown": ("nunit_onetimeteardown", "per_class"),
-    "TestInitialize": ("mstest_initialize", "per_test"),  # MSTest
-    "TestCleanup": ("mstest_cleanup", "per_test"),  # MSTest
-    "ClassInitialize": ("mstest_class_initialize", "per_class"),  # MSTest
-    "ClassCleanup": ("mstest_class_cleanup", "per_class"),  # MSTest
-    "Fact": ("xunit_fact", "per_test"),
-    "Theory": ("xunit_theory", "per_test"),
-}
-
-
-def _detect_csharp(tree, src_bytes: bytes, language: str = 'csharp') -> list[FixtureResult]:
-    results = []
-
-    def detect_fixture_attributes(node, src_bytes):
-        """Extract fixture attributes from a node."""
-        attributes = []
-        for c in node.children:
-            if c.type == "attribute_list":
-                # Extract attributes from inside the attribute_list
-                for attr_node in c.children:
-                    if attr_node.type == "attribute":
-                        attr_text = _source(attr_node, src_bytes).strip()
-                        attributes.append(attr_text)
-        return attributes
-
-    def get_method_name(node, src_bytes):
-        """Get method name from method_declaration or local_function_statement."""
-        # For method_declaration, try 'name' field
-        name_node = node.child_by_field_name("name")
-        if name_node:
-            return _source(name_node, src_bytes)
-
-        # For local_function_statement, find the first identifier
-        for c in node.children:
-            if c.type == "identifier":
-                return _source(c, src_bytes)
-        return ""
-
-    def visit(node):
-        # Handle both method_declaration and local_function_statement
-        if node.type in ("method_declaration", "local_function_statement"):
-            # Get method name
-            method_name = get_method_name(node, src_bytes)
-
-            # Collect all attributes for this method
-            attributes = detect_fixture_attributes(node, src_bytes)
-
-            # Check if any known fixture attribute is present
-            # Sort by length descending so more specific attributes match first (e.g., OneTimeSetUp before SetUp)
-            for attr in attributes:
-                matched = False
-                for attr_name in sorted(
-                    CSHARP_FIXTURE_ATTRIBUTES.keys(), key=len, reverse=True
-                ):
-                    # Use word boundary checking to avoid "SetUp" matching "OneTimeSetUp"
-                    if (
-                        attr_name == attr
-                        or attr.startswith(attr_name + "[")
-                        or attr.startswith(attr_name + "(")
-                    ):
-                        fixture_type, scope = CSHARP_FIXTURE_ATTRIBUTES[attr_name]
-                        # Determine framework based on attribute
-                        if attr_name in (
-                            "SetUp",
-                            "TearDown",
-                            "OneTimeSetUp",
-                            "OneTimeTearDown",
-                        ):
-                            framework = "nunit"
-                        elif attr_name in (
-                            "TestInitialize",
-                            "TestCleanup",
-                            "ClassInitialize",
-                            "ClassCleanup",
-                        ):
-                            framework = "mstest"
-                        elif attr_name in ("Fact", "Theory"):
-                            framework = "xunit"
-                        else:
-                            framework = None
-                        results.append(
-                            _build_result(
-                                node=node,
-                                func_node=node,
-                                src_bytes=src_bytes,
-                                fixture_type=fixture_type,
-                                scope=scope,
-                                framework=framework,
-                                language=language,
-                            )
-                        )
-                        matched = True
-                        break
-                if matched:
-                    break  # Only one fixture type per method
-
-            # IAsyncLifetime interface methods: InitializeAsync and DisposeAsync
-            # Only for method_declaration (not local functions)
-            if (
-                node.type == "method_declaration" and not attributes
-            ):  # Only if no explicit attributes were found
-                if method_name in ("InitializeAsync", "DisposeAsync"):
-                    fixture_type = (
-                        "xunit_async_initialize"
-                        if method_name == "InitializeAsync"
-                        else "xunit_async_dispose"
-                    )
-                    scope = "per_class"
-                    results.append(
-                        _build_result(
-                            node=node,
-                            func_node=node,
-                            src_bytes=src_bytes,
-                            fixture_type=fixture_type,
-                            scope=scope,
-                            language=language,
-                        )
-                    )
-
-        for child in node.children:
-            visit(child)
-
-    visit(tree.root_node)
-    return results
 
 
 # ---------------------------------------------------------------------------
@@ -1157,39 +1008,6 @@ def _count_test_functions_go(tree, src_bytes: bytes) -> int:
     return count
 
 
-def _count_test_functions_csharp(tree, src_bytes: bytes) -> int:
-    """Count test methods in C# (with test attributes or StartsWith Test)."""
-    count = 0
-    test_attributes = {"[Test]", "[TestMethod]", "[Fact]", "[Theory]"}
-
-    def visit(node):
-        nonlocal count
-        if node.type in ("method_declaration", "local_function_statement"):
-            # Check for test attributes
-            for c in node.children:
-                if c.type == "attribute_list":
-                    for attr_node in c.children:
-                        if attr_node.type == "attribute":
-                            attr_text = _source(attr_node, src_bytes).strip()
-                            if any(
-                                attr_text.startswith(ta.rstrip("]"))
-                                for ta in test_attributes
-                            ):
-                                count += 1
-                                return
-            # Heuristic: count methods/functions starting with "Test"
-            name_node = node.child_by_field_name("name")
-            if name_node:
-                name = _source(name_node, src_bytes)
-                if name.startswith("Test"):
-                    count += 1
-        for child in node.children:
-            visit(child)
-
-    visit(tree.root_node)
-    return count
-
-
 def _count_test_functions(tree, src_bytes: bytes, language: str) -> int:
     """Dispatch to language-specific test function counter."""
     counters = {
@@ -1198,7 +1016,6 @@ def _count_test_functions(tree, src_bytes: bytes, language: str) -> int:
         "javascript": _count_test_functions_js,
         "typescript": _count_test_functions_js,
         "go": _count_test_functions_go,
-        "csharp": _count_test_functions_csharp,
     }
     counter = counters.get(language)
     return counter(tree, src_bytes) if counter else 0
@@ -1280,7 +1097,7 @@ def _calculate_teardown_pairs(fixtures: list[FixtureResult]) -> None:
       - checks if fixture has 'yield' statement (fixture-style teardown)
     For Python unittest:
       - setUp is paired with tearDown
-    For Java/C#/etc:
+    For Java/etc:
       - @BeforeEach is paired with @AfterEach
       - @Before is paired with @After
       - etc.
@@ -1355,7 +1172,6 @@ DETECTORS = {
     "javascript": _detect_js,
     "typescript": _detect_js,  # TypeScript shares JS grammar for this purpose
     "go": _detect_go,
-    "csharp": _detect_csharp,
 }
 
 

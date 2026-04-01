@@ -8,7 +8,7 @@ This document describes the migration from custom tree-sitter-based code complex
 - **Reduced Maintenance Burden**: Leveraging proven, well-maintained libraries reduces custom code
 - **Better Reliability**: Metrics calculation delegated to established tools  
 - **Industry Standards**: Using tools that follow SonarQube and academic standards
-- **Cross-Language Support**: Better consistency across Python, Java, JavaScript, TypeScript, Go, and C#
+- **Cross-Language Support**: Better consistency across Python, Java, JavaScript, TypeScript, and Go
 
 ## Libraries Used
 
@@ -16,7 +16,7 @@ This document describes the migration from custom tree-sitter-based code complex
 - **Library**: [https://github.com/terryyin/lizard](https://github.com/terryyin/lizard)
 - **Version**: >= 1.21.0
 - **Purpose**: Calculate cyclomatic complexity (McCabe complexity)
-- **Languages Supported**: All 6 languages (Python, Java, JavaScript, TypeScript, Go, C#)
+- **Languages Supported**: All 5 languages (Python, Java, JavaScript, TypeScript, Go)
 - **Integration**: [collection/complexity_provider.py](../collection/complexity_provider.py)
 
 **What is Cyclomatic Complexity?**
@@ -63,7 +63,7 @@ def nested_ifs():
 ```
 
 ### 3. Fallback Formula (for non-Python languages)
-For languages without native cognitive complexity support (Java, JavaScript, Go, C#), we use:
+For languages without native cognitive complexity support (Java, JavaScript, Go), we use:
 
 ```
 cognitive_complexity ≈ cyclomatic_complexity × max_nesting_depth

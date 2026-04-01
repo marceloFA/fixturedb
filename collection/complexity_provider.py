@@ -2,7 +2,7 @@
 Third-party metric collection for code complexity and structure analysis.
 
 This module wraps industry-standard tools to calculate code metrics across all
-6 supported languages (Python, Java, JavaScript, TypeScript, Go, C#).
+5 supported languages (Python, Java, JavaScript, TypeScript, Go).
 
 METRICS PROVIDED (via Lizard + cognitive-complexity libraries)
 =============================================================
@@ -216,7 +216,7 @@ def _get_extension(language: str) -> str:
         'javascript': 'js',
         'typescript': 'ts',
         'go': 'go',
-        'csharp': 'cs',
+
         'c++': 'cpp',
         'c': 'c',
     }

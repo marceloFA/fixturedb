@@ -211,7 +211,7 @@ def _export_language_specific_fixtures(conn: sqlite3.Connection, staging: Path) 
 
     Generated files: fixtures_python.csv, fixtures_java.csv, etc.
     """
-    languages = ["python", "java", "javascript", "typescript", "go", "csharp"]
+    languages = ["python", "java", "javascript", "typescript", "go"]
 
     for lang in languages:
         # Query: one row per fixture with all related data
@@ -312,7 +312,7 @@ def _write_stats(conn, path: Path) -> None:
     conn2.row_factory = sqlite3.Row
     lines = ["FixtureDB — Corpus Statistics\n", "=" * 40 + "\n\n"]
 
-    for lang in ("python", "java", "javascript", "typescript", "go", "csharp"):
+    for lang in ("python", "java", "javascript", "typescript", "go"):
         r = conn2.execute(
             "SELECT COUNT(*) n FROM repositories WHERE language=? AND status='analysed'",
             (lang,),

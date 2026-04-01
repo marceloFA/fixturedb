@@ -158,29 +158,6 @@ func TestMain(m *testing.M) {
             assert isinstance(fixture.cyclomatic_complexity, int)
             assert isinstance(fixture.cognitive_complexity, int)
 
-    def test_csharp_fixture_has_metrics(self, tmp_path):
-        """C# fixtures should have complexity metrics."""
-        cs_file = tmp_path / "TestFixture.cs"
-        cs_file.write_text("""
-public class TestFixture {
-    [SetUp]
-    public void Setup() {
-        var config = LoadConfiguratio();
-        if (config != null) {
-            InitializeDatabase(config.DbConnection);
-            if (config.UseCache) {
-                InitializeCache();
-            }
-        }
-    }
-}
-""")
-        result = extract_fixtures(cs_file, "csharp")
-        if result.fixtures:
-            fixture = result.fixtures[0]
-            assert isinstance(fixture.cyclomatic_complexity, int)
-            assert isinstance(fixture.cognitive_complexity, int)
-
 
 class TestComplexityMetricsReasonableness:
     """Test that metrics are reasonable and well-formed."""

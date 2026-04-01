@@ -13,7 +13,7 @@ One row per GitHub repository discovered and processed.
 | `id`              | INTEGER PK | Internal identifier |
 | `github_id`       | INTEGER UNIQUE | GitHub's numeric repository ID |
 | `full_name`       | TEXT    | `"owner/repo"` slug (e.g. `"pytest-dev/pytest"`) |
-| `language`        | TEXT    | `python` \| `java` \| `javascript` \| `typescript` \| `go` \| `csharp` |
+| `language`        | TEXT    | `python` \| `java` \| `javascript` \| `typescript` \| `go` |
 | `stars`           | INTEGER | GitHub star count at collection time |
 | `forks`           | INTEGER | GitHub fork count at collection time |
 | `description`     | TEXT    | GitHub repository description |
@@ -76,7 +76,7 @@ One row per fixture definition. This is the primary analysis table.
 | `num_external_calls`           | INTEGER | Estimated I/O / external API calls (DB, HTTP, filesystem, env) |
 | `num_parameters`               | INTEGER | Number of function parameters |
 | `reuse_count`                  | INTEGER | Number of test functions that use this fixture as a parameter (fixture modularity metric) |
-| `has_teardown_pair`            | INTEGER | 1 if fixture has cleanup logic (yield for pytest, paired @After/@AfterEach for Java/C#), 0 otherwise |
+
 | `raw_source`                   | TEXT    | Full source text of the fixture as extracted |
 | `category`                     | TEXT    | RQ1 taxonomy label — `NULL` until manually classified |
 | `framework`                    | TEXT    | Testing framework (pytest, unittest, junit, nunit, testify, jest, vitest, etc.) |
@@ -101,12 +101,6 @@ One row per fixture definition. This is the primary analysis table.
 | `after_each` | JS/TS | `afterEach(...)` call |
 | `after_all` | JS/TS | `afterAll(...)` call |
 | `mocha_after` | JS/TS | `after(...)` call |
-| `nunit_setup` | C# | `[SetUp]` attribute (NUnit) |
-| `nunit_teardown` | C# | `[TearDown]` attribute (NUnit) |
-| `nunit_onetimesetup` | C# | `[OneTimeSetUp]` attribute (NUnit) |
-| `nunit_onetimeteardown` | C# | `[OneTimeTearDown]` attribute (NUnit) |
-| `xunit_fact` | C# | `[Fact]` attribute (xUnit) |
-| `xunit_theory` | C# | `[Theory]` attribute (xUnit) |
 | `test_main` | Go | `func TestMain(m *testing.M)` |
 | `go_helper` | Go | Non-test helper called from ≥ 2 `TestXxx` functions (heuristic — see §12) |
 

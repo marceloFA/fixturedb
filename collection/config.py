@@ -326,20 +326,6 @@ LANGUAGE_CONFIGS = {
         test_path_patterns=["test/", "tests/", "_test.go"],
         test_file_suffixes=["_test.go"],
     ),
-    "csharp": LanguageConfig(
-        name="C#",
-        github_language="C#",
-        min_stars=100,
-        target_repos=300,
-        test_path_patterns=["tests/", "test/", "Tests/", "Test/"],
-        test_file_suffixes=[
-            "Tests.cs",
-            ".Tests.cs",
-            "_Tests.cs",
-            "Test.cs",
-            "_Test.cs",
-        ],
-    ),
 }
 
 # Minimum thresholds applied after cloning
@@ -355,7 +341,6 @@ LANGUAGE_SURVIVAL_RATES = {
     "python": 0.076,  # 7.6% actual from completed collection
     "java": 0.15,  # estimate (Java typically has higher survival)
     "go": 0.09,  # estimate
-    "csharp": 0.10,  # estimate
     "javascript": 0.08,  # estimate
     "typescript": 0.08,  # estimate
 }

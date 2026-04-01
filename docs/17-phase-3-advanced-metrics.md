@@ -16,7 +16,7 @@ Phase 3 adds 4 new quantitative metrics for research questions on fixture modula
 
 **Metric**: Integer ≥ 1  
 **Computed from**: Tree-sitter AST per function  
-**Languages**: All 6 supported languages (Python, Java, JavaScript, TypeScript, Go, C#)
+**Languages**: All 5 supported languages (Python, Java, JavaScript, TypeScript, Go)
 
 **Definition**: Maximum nesting level of block-creating statements within the fixture.
 - Level 1: No nesting (linear code)
@@ -109,7 +109,7 @@ For [SetUp]/@BeforeEach:
 
 **Metric**: Integer (0 or 1) — boolean flag  
 **Computed from**: AST + pattern matching  
-**Languages**: All 6 languages
+**Languages**: All 5 languages
 
 **Definition**: Whether fixture has cleanup/teardown logic paired with setup.
 
@@ -128,8 +128,6 @@ For [SetUp]/@BeforeEach:
 | **Java/JUnit4** | ✓ | `@Before` + `@After` or `@BeforeClass` + `@AfterClass` same class |
 | **Java/JUnit5** | ✓ | `@BeforeEach` + `@AfterEach` or `@BeforeAll` + `@AfterAll` |
 | **JavaScript/Mocha** | ✓ | `beforeEach()` + `afterEach()` or `before()` + `after()` in same describe |
-| **C#/NUnit** | ✓ | `[SetUp]` + `[TearDown]` or `[OneTimeSetUp]` + `[OneTimeTearDown]` |
-| **C#/xUnit** | ✗ | Standard pattern doesn't use explicit teardown (uses IDisposable) |
 | **Go** | ✓ | `t.Cleanup()` callback registered |
 
 **Note on xUnit / Python/contextlib**:
