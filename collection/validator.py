@@ -43,7 +43,7 @@ def generate_sample(n_per_language: int = 50) -> Path:
     Draw a stratified random sample of n_per_language fixtures per language.
     Exports to a CSV with an empty `is_true_fixture` column for manual review.
     Returns the CSV path.
-    
+
     Raises:
         ValueError: If no analysed repositories are found in the database.
     """

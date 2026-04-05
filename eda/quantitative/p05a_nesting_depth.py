@@ -70,10 +70,16 @@ def plot_nesting_depth(conn, out_dir, show):
             return "Very Deep (5+)"
 
     fixtures["depth_cat"] = fixtures["max_nesting_depth"].apply(categorize_depth)
-    
+
     # Calculate percentages per language
-    depth_order = ["Flat (1)", "Shallow (2)", "Medium (3)", "Deep (4)", "Very Deep (5+)"]
-    
+    depth_order = [
+        "Flat (1)",
+        "Shallow (2)",
+        "Medium (3)",
+        "Deep (4)",
+        "Very Deep (5+)",
+    ]
+
     lang_labels = [lang_display(l) for l in present]
     x = np.arange(len(present))
     width = 0.6
@@ -85,28 +91,50 @@ def plot_nesting_depth(conn, out_dir, show):
             lang_data = fixtures[fixtures["language"] == lang]
             pct = (lang_data["depth_cat"] == depth_cat).sum() / len(lang_data) * 100
             percentages.append(pct)
-        
-        ax.bar(x, percentages, width, label=depth_cat, bottom=bottom,
-               color=SEQUENTIAL_BLUE[i], edgecolor="white", linewidth=1.5)
-        
+
+        ax.bar(
+            x,
+            percentages,
+            width,
+            label=depth_cat,
+            bottom=bottom,
+            color=SEQUENTIAL_BLUE[i],
+            edgecolor="white",
+            linewidth=1.5,
+        )
+
         # Add percentage labels in the middle of each segment if large enough
         for j, pct in enumerate(percentages):
             if pct > 5:  # Only label if segment is large enough to read
-                ax.text(j, bottom[j] + pct/2, f"{pct:.0f}%", 
-                       ha="center", va="center", fontweight="bold", fontsize=9, color="white")
-        
+                ax.text(
+                    j,
+                    bottom[j] + pct / 2,
+                    f"{pct:.0f}%",
+                    ha="center",
+                    va="center",
+                    fontweight="bold",
+                    fontsize=9,
+                    color="white",
+                )
+
         bottom += percentages
 
     ax.set_ylabel("% of Fixtures", fontsize=11, fontweight="bold")
     ax.set_title(
         "Fixture Nesting Depth Distribution\n"
         "(What proportion of fixtures have deeply nested control flow?)",
-        fontsize=12, fontweight="bold"
+        fontsize=12,
+        fontweight="bold",
     )
     ax.set_xticks(x)
     ax.set_xticklabels(lang_labels, fontsize=10)
     ax.set_ylim(0, 105)
-    ax.legend(fontsize=10, loc="upper left", bbox_to_anchor=(1, 1), title="Nesting Depth Level")
+    ax.legend(
+        fontsize=10,
+        loc="upper left",
+        bbox_to_anchor=(1, 1),
+        title="Nesting Depth Level",
+    )
     ax.grid(axis="y", alpha=0.3)
 
     plt.tight_layout()

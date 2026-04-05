@@ -55,37 +55,62 @@ def plot_activity_recency(conn, out_dir, show):
         lang_data = repos[repos["language"] == lang]["days_since_push"]
         median_days = lang_data.median()
         mean_days = lang_data.mean()
-        stats.append({
-            "language": lang,
-            "median": median_days,
-            "mean": mean_days,
-        })
-    
+        stats.append(
+            {
+                "language": lang,
+                "median": median_days,
+                "mean": mean_days,
+            }
+        )
+
     stats_df = pd.DataFrame(stats).set_index("language")
     stats_df = stats_df.reindex(present)
 
     # Simple grouped bar chart: median and mean days since push
     x = np.arange(len(present))
     width = 0.35
-    
-    bars1 = ax.bar(x - width/2, stats_df["median"], width, label="Median",
-                    color="#3498db", alpha=0.85, edgecolor="black", linewidth=1)
-    bars2 = ax.bar(x + width/2, stats_df["mean"], width, label="Mean",
-                    color="#e74c3c", alpha=0.85, edgecolor="black", linewidth=1)
+
+    bars1 = ax.bar(
+        x - width / 2,
+        stats_df["median"],
+        width,
+        label="Median",
+        color="#3498db",
+        alpha=0.85,
+        edgecolor="black",
+        linewidth=1,
+    )
+    bars2 = ax.bar(
+        x + width / 2,
+        stats_df["mean"],
+        width,
+        label="Mean",
+        color="#e74c3c",
+        alpha=0.85,
+        edgecolor="black",
+        linewidth=1,
+    )
 
     # Add value labels on bars
     for bars in [bars1, bars2]:
         for bar in bars:
             height = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width()/2., height,
-                   f'{int(height)}d',
-                   ha='center', va='bottom', fontsize=9, fontweight="bold")
+            ax.text(
+                bar.get_x() + bar.get_width() / 2.0,
+                height,
+                f"{int(height)}d",
+                ha="center",
+                va="bottom",
+                fontsize=9,
+                fontweight="bold",
+            )
 
     ax.set_ylabel("Days Since Last Push", fontsize=11, fontweight="bold")
     ax.set_title(
         "Repository Activity: How Long Since Last Commit?\n"
         "(Shorter bars = more recently active repositories)",
-        fontsize=12, fontweight="bold"
+        fontsize=12,
+        fontweight="bold",
     )
     ax.set_xticks(x)
     ax.set_xticklabels([lang_display(l) for l in present], fontsize=10)

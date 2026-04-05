@@ -73,19 +73,30 @@ def plot_nesting_complexity_correlation(conn, out_dir, show):
     for i, lang in enumerate(present):
         lang_data = fixtures[fixtures["language"] == lang]
         medians = [
-            lang_data[lang_data["nesting_cat"] == cat]["cyclomatic_complexity"].median()
-            if (lang_data["nesting_cat"] == cat).any()
-            else 0
+            (
+                lang_data[lang_data["nesting_cat"] == cat][
+                    "cyclomatic_complexity"
+                ].median()
+                if (lang_data["nesting_cat"] == cat).any()
+                else 0
+            )
             for cat in nesting_order
         ]
-        ax.bar(x + i * width, medians, width, label=lang_display(lang), color=LANG_PALETTE[lang])
+        ax.bar(
+            x + i * width,
+            medians,
+            width,
+            label=lang_display(lang),
+            color=LANG_PALETTE[lang],
+        )
 
     ax.set_ylabel("Median Cyclomatic Complexity", fontsize=11, fontweight="bold")
     ax.set_xlabel("Nesting Depth Category", fontsize=11, fontweight="bold")
     ax.set_title(
         "Do Deeply Nested Fixtures Also Have More Complexity?\n"
         "(Yes — complexity increases with nesting depth)",
-        fontsize=12, fontweight="bold"
+        fontsize=12,
+        fontweight="bold",
     )
     ax.set_xticks(x + width)
     ax.set_xticklabels(nesting_order, fontsize=10)

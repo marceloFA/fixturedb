@@ -68,43 +68,61 @@ def plot_teardown_adoption(conn, out_dir, show):
         "#2ecc71" if p >= 50 else "#f39c12" if p >= 25 else "#e74c3c"
         for p in adoption_pct
     ]
-    bars = ax.bar(lang_names, adoption_pct, color=colors, alpha=0.8, edgecolor="black", linewidth=0.7)
+    bars = ax.bar(
+        lang_names,
+        adoption_pct,
+        color=colors,
+        alpha=0.8,
+        edgecolor="black",
+        linewidth=0.7,
+    )
 
     # Add percentage labels on bars
     for bar, pct in zip(bars, adoption_pct):
         height = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width()/2., height,
-               f'{pct:.0f}%', ha='center', va='bottom', fontsize=10, fontweight='bold')
+        ax.text(
+            bar.get_x() + bar.get_width() / 2.0,
+            height,
+            f"{pct:.0f}%",
+            ha="center",
+            va="bottom",
+            fontsize=10,
+            fontweight="bold",
+        )
 
     ax.set_ylabel("Adoption Rate  (%)", fontsize=11)
     ax.set_title(
-        "Fixture Cleanup/Teardown Adoption\n"
-        "(% of fixtures with cleanup logic)",
-        fontsize=12, fontweight="bold"
+        "Fixture Cleanup/Teardown Adoption\n" "(% of fixtures with cleanup logic)",
+        fontsize=12,
+        fontweight="bold",
     )
     ax.set_ylim(0, 105)
     ax.grid(axis="y", alpha=0.3)
     ax.axhline(50, color="gray", linestyle="--", alpha=0.4, linewidth=1)
-    ax.text(len(lang_names)-0.5, 52, "50% threshold", fontsize=9, alpha=0.6)
+    ax.text(len(lang_names) - 0.5, 52, "50% threshold", fontsize=9, alpha=0.6)
 
     # Add overall statistics
     total_with = (fixtures["has_teardown_pair"] == 1).sum()
     total_without = (fixtures["has_teardown_pair"] == 0).sum()
     overall_pct = 100 * total_with / (total_with + total_without)
-    
+
     summary = f"Overall: {overall_pct:.1f}% have teardown  ({total_with:,}/{total_with+total_without:,})"
-    ax.text(0.02, 0.97, summary, transform=ax.transAxes, 
-           fontsize=9, va='top',
-           bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.3))
+    ax.text(
+        0.02,
+        0.97,
+        summary,
+        transform=ax.transAxes,
+        fontsize=9,
+        va="top",
+        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.3),
+    )
 
     plt.tight_layout()
     save_or_show(fig, "05e_teardown_adoption", out_dir, show)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="FixtureDB Teardown Adoption"
-    )
+    parser = argparse.ArgumentParser(description="FixtureDB Teardown Adoption")
     parser.add_argument("--db", default=str(DB_PATH))
     parser.add_argument("--out", default=str(DEFAULT_OUT), help="Base output directory")
     parser.add_argument("--show", action="store_true")

@@ -212,7 +212,7 @@ def _search_page(query: str, page: int, per_page: int = 100) -> dict:
     """Fetch a single page of search results with automatic retry on rate limit."""
     max_retries = 3
     retry_count = 0
-    
+
     while retry_count < max_retries:
         params = {
             "q": query,
@@ -240,7 +240,7 @@ def _search_page(query: str, page: int, per_page: int = 100) -> dict:
 
         r.raise_for_status()
         return r.json()
-    
+
     # Max retries exceeded
     logger.error(
         f"rate limit retry exhausted after {max_retries} attempts for query: {query!r}"

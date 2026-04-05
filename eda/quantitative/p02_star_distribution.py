@@ -65,7 +65,7 @@ def plot_star_distribution(conn, out_dir, show):
 
     # Get tier counts per language
     tier_order = ["0–100 ★", "100–500 ★", "500–1k ★", "1k–5k ★", "5k+ ★"]
-    
+
     data = []
     for lang in present:
         lang_repos = repos[repos["language"] == lang]
@@ -81,15 +81,24 @@ def plot_star_distribution(conn, out_dir, show):
 
     for i, tier in enumerate(tier_order):
         counts = [data[j].get(tier, 0) for j in range(len(present))]
-        ax.bar(x, counts, width, label=tier, bottom=bottom, 
-               color=SEQUENTIAL_PALETTE[i], edgecolor="white", linewidth=1.5)
+        ax.bar(
+            x,
+            counts,
+            width,
+            label=tier,
+            bottom=bottom,
+            color=SEQUENTIAL_PALETTE[i],
+            edgecolor="white",
+            linewidth=1.5,
+        )
         bottom += counts
 
     ax.set_ylabel("# Repositories", fontsize=11, fontweight="bold")
     ax.set_title(
         "Repository Corpus by Star Popularity\n"
         "(Stacked by star tier — shows heavily star-sorted collection)",
-        fontsize=12, fontweight="bold"
+        fontsize=12,
+        fontweight="bold",
     )
     ax.set_xticks(x)
     ax.set_xticklabels([lang_display(l) for l in present], fontsize=10)

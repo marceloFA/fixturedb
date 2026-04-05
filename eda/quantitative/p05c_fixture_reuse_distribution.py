@@ -64,7 +64,7 @@ def plot_fixture_reuse_distribution(conn, out_dir, show):
         single_use = (lang_data == 1).sum()
         multi_use = (lang_data > 1).sum()
         total = len(lang_data)
-        
+
         single_use_pcts.append(single_use / total * 100)
         multi_use_pcts.append(multi_use / total * 100)
         labels.append(lang_display(lang))
@@ -72,24 +72,56 @@ def plot_fixture_reuse_distribution(conn, out_dir, show):
     # Stacked bar chart
     x = np.arange(len(present))
     width = 0.6
-    
-    p1 = ax.bar(x, single_use_pcts, width, label="Single-Use (reuse=1)", 
-                color="#e74c3c", edgecolor="black", linewidth=1)
-    p2 = ax.bar(x, multi_use_pcts, width, bottom=single_use_pcts, 
-                label="Multi-Use (reuse>1)", color="#2ecc71", edgecolor="black", linewidth=1)
+
+    p1 = ax.bar(
+        x,
+        single_use_pcts,
+        width,
+        label="Single-Use (reuse=1)",
+        color="#e74c3c",
+        edgecolor="black",
+        linewidth=1,
+    )
+    p2 = ax.bar(
+        x,
+        multi_use_pcts,
+        width,
+        bottom=single_use_pcts,
+        label="Multi-Use (reuse>1)",
+        color="#2ecc71",
+        edgecolor="black",
+        linewidth=1,
+    )
 
     # Add percentage labels
     for i, (single, multi) in enumerate(zip(single_use_pcts, multi_use_pcts)):
-        ax.text(i, single/2, f"{single:.1f}%", ha="center", va="center", 
-                fontweight="bold", fontsize=10, color="white")
-        ax.text(i, single + multi/2, f"{multi:.1f}%", ha="center", va="center", 
-                fontweight="bold", fontsize=10, color="white")
+        ax.text(
+            i,
+            single / 2,
+            f"{single:.1f}%",
+            ha="center",
+            va="center",
+            fontweight="bold",
+            fontsize=10,
+            color="white",
+        )
+        ax.text(
+            i,
+            single + multi / 2,
+            f"{multi:.1f}%",
+            ha="center",
+            va="center",
+            fontweight="bold",
+            fontsize=10,
+            color="white",
+        )
 
     ax.set_ylabel("% of Fixtures", fontsize=11, fontweight="bold")
     ax.set_title(
         "Fixture Reuse Patterns: Single-Use vs Shared\n"
         "(Most fixtures are single-use, few are shared across tests)",
-        fontsize=12, fontweight="bold"
+        fontsize=12,
+        fontweight="bold",
     )
     ax.set_xticks(x)
     ax.set_xticklabels(labels, fontsize=10)

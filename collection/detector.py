@@ -513,7 +513,7 @@ def _detect_java(tree, src_bytes: bytes, language: str = "java") -> list[Fixture
                 ann_key = "@" + ann.lstrip("@").split("(")[0].strip()
                 fixture_type = None
                 scope = None
-                
+
                 # Handle ambiguous annotations (same name in JUnit4 and TestNG)
                 if ann_key in JUNIT_TESTNG_AMBIGUOUS:
                     junit4_type, testng_type, scope = JUNIT_TESTNG_AMBIGUOUS[ann_key]
@@ -522,7 +522,7 @@ def _detect_java(tree, src_bytes: bytes, language: str = "java") -> list[Fixture
                     fixture_type = testng_type
                 elif ann_key in JUNIT_FIXTURE_ANNOTATIONS:
                     fixture_type, scope = JUNIT_FIXTURE_ANNOTATIONS[ann_key]
-                
+
                 if fixture_type and scope:
                     results.append(
                         _build_result(

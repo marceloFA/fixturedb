@@ -37,9 +37,15 @@ from eda.quantitative.p04a_mock_adoption import plot_mock_adoption
 from eda.quantitative.p04b_framework_diversity import plot_framework_diversity
 from eda.quantitative.p04c_mock_styles import plot_mock_styles
 from eda.quantitative.p05a_nesting_depth import plot_nesting_depth
-from eda.quantitative.p05b_nesting_complexity_correlation import plot_nesting_complexity_correlation
-from eda.quantitative.p05c_fixture_reuse_distribution import plot_fixture_reuse_distribution
-from eda.quantitative.p05d_reuse_complexity_correlation import plot_reuse_complexity_correlation
+from eda.quantitative.p05b_nesting_complexity_correlation import (
+    plot_nesting_complexity_correlation,
+)
+from eda.quantitative.p05c_fixture_reuse_distribution import (
+    plot_fixture_reuse_distribution,
+)
+from eda.quantitative.p05d_reuse_complexity_correlation import (
+    plot_reuse_complexity_correlation,
+)
 from eda.quantitative.p05e_teardown_adoption import plot_teardown_adoption
 from eda.quantitative.p05f_contributors_impact import plot_contributors_impact
 

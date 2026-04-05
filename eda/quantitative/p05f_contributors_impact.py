@@ -80,31 +80,38 @@ def plot_contributors_impact(conn, out_dir, show):
     ax.plot(x_line, y_line, "r--", alpha=0.8, linewidth=2.5, label="Trend")
 
     corr = repos["num_contributors"].corr(repos["avg_cc"])
-    
+
     ax.set_xscale("log")
     ax.set_xlabel("Number of Contributors  (log scale)", fontsize=11)
     ax.set_ylabel("Average Fixture Cyclomatic Complexity", fontsize=11)
     ax.set_title(
         f"Team Size vs Fixture Complexity\n"
         f"Correlation:  r={corr:.2f}  (do larger teams write simpler or more complex fixtures?)",
-        fontsize=12, fontweight="bold"
+        fontsize=12,
+        fontweight="bold",
     )
     ax.grid(alpha=0.3, which="both")
-    
+
     # Add color legend for languages
     from matplotlib.patches import Patch
-    legend_elements = [Patch(facecolor=LANG_PALETTE[l], label=lang_display(l)) for l in present]
-    ax.legend(handles=legend_elements + [plt.Line2D([0], [0], color='r', linestyle='--', linewidth=2)], 
-             fontsize=9, loc="best", title="Languages")
+
+    legend_elements = [
+        Patch(facecolor=LANG_PALETTE[l], label=lang_display(l)) for l in present
+    ]
+    ax.legend(
+        handles=legend_elements
+        + [plt.Line2D([0], [0], color="r", linestyle="--", linewidth=2)],
+        fontsize=9,
+        loc="best",
+        title="Languages",
+    )
 
     plt.tight_layout()
     save_or_show(fig, "05f_contributors_impact", out_dir, show)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="FixtureDB Contributors Impact"
-    )
+    parser = argparse.ArgumentParser(description="FixtureDB Contributors Impact")
     parser.add_argument("--db", default=str(DB_PATH))
     parser.add_argument("--out", default=str(DEFAULT_OUT), help="Base output directory")
     parser.add_argument("--show", action="store_true")

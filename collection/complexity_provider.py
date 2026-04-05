@@ -56,7 +56,9 @@ def get_cyclomatic_complexity(file_path: Path, language: str) -> Optional[int]:
             # Return first function found; caller typically analyzes single functions
             return result.function_list[0].cyclomatic_complexity
     except Exception as e:
-        logger.debug(f"Failed to get cyclomatic complexity for {file_path}: {type(e).__name__}: {e}")
+        logger.debug(
+            f"Failed to get cyclomatic complexity for {file_path}: {type(e).__name__}: {e}"
+        )
     return None
 
 
@@ -86,7 +88,9 @@ def get_cognitive_complexity_python(file_path: Path) -> Optional[int]:
                 if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     return get_cognitive_complexity(node)
     except Exception as e:
-        logger.debug(f"Failed to get cognitive complexity for {file_path}: {type(e).__name__}: {e}")
+        logger.debug(
+            f"Failed to get cognitive complexity for {file_path}: {type(e).__name__}: {e}"
+        )
     return None
 
 
@@ -201,7 +205,9 @@ def analyze_function_complexity(
                 except Exception as e:
                     # Fall back to formula if cognitive_complexity library fails
                     # Use cyclomatic complexity as proxy (nesting depth not available from Lizard)
-                    logger.debug(f"Failed to analyze Python cognitive complexity: {type(e).__name__}: {e}")
+                    logger.debug(
+                        f"Failed to analyze Python cognitive complexity: {type(e).__name__}: {e}"
+                    )
                     metrics["cognitive_complexity"] = get_cognitive_complexity_fallback(
                         metrics["cyclomatic_complexity"], 1
                     )
@@ -213,14 +219,18 @@ def analyze_function_complexity(
 
     except Exception as e:
         # Return defaults (including loc=0) on any error
-        logger.debug(f"Complexity analysis failed for source snippet: {type(e).__name__}: {e}")
+        logger.debug(
+            f"Complexity analysis failed for source snippet: {type(e).__name__}: {e}"
+        )
     finally:
         # Ensure cleanup even if exception occurs
         if temp_file is not None:
             try:
                 temp_file.unlink(missing_ok=True)
             except Exception as e:
-                logger.debug(f"Failed to clean up temp file {temp_file}: {type(e).__name__}: {e}")
+                logger.debug(
+                    f"Failed to clean up temp file {temp_file}: {type(e).__name__}: {e}"
+                )
 
     return metrics
 

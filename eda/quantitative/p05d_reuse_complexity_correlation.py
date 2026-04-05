@@ -65,48 +65,64 @@ def plot_reuse_complexity_correlation(conn, out_dir, show):
     colors_list = []
     labels_list = []
     pos = 0
-    
+
     for lang_idx, lang in enumerate(present):
         lang_data = fixtures[fixtures["language"] == lang]
-        
+
         # Single-use
-        single_data = lang_data[lang_data["reuse_cat"] == "Single-Use"]["cyclomatic_complexity"].values
+        single_data = lang_data[lang_data["reuse_cat"] == "Single-Use"][
+            "cyclomatic_complexity"
+        ].values
         plot_data.append(single_data)
         positions.append(pos)
         colors_list.append("#e74c3c")
         pos += 1
-        
+
         # Multi-use
-        multi_data = lang_data[lang_data["reuse_cat"] == "Multi-Use"]["cyclomatic_complexity"].values
+        multi_data = lang_data[lang_data["reuse_cat"] == "Multi-Use"][
+            "cyclomatic_complexity"
+        ].values
         plot_data.append(multi_data)
         positions.append(pos)
         colors_list.append("#3498db")
         pos += 2  # gap between language groups
 
-    bp = ax.boxplot(plot_data, positions=positions, widths=0.6, patch_artist=True,
-                    showfliers=False, medianprops=dict(color="black", linewidth=2))
-    
+    bp = ax.boxplot(
+        plot_data,
+        positions=positions,
+        widths=0.6,
+        patch_artist=True,
+        showfliers=False,
+        medianprops=dict(color="black", linewidth=2),
+    )
+
     # Color the boxes
     for patch, color in zip(bp["boxes"], colors_list):
         patch.set_facecolor(color)
         patch.set_alpha(0.7)
 
     # Create labels and ticks
-    tick_positions = [0.5 + i*2 for i in range(len(present))]
+    tick_positions = [0.5 + i * 2 for i in range(len(present))]
     ax.set_xticks(tick_positions)
     ax.set_xticklabels([lang_display(l) for l in present], fontsize=10)
-    
+
     # Custom legend
     from matplotlib.patches import Patch
-    legend_elements = [Patch(facecolor="#e74c3c", alpha=0.7, label="Single-Use"),
-                      Patch(facecolor="#3498db", alpha=0.7, label="Multi-Use")]
-    ax.legend(handles=legend_elements, fontsize=10, loc="upper left", bbox_to_anchor=(1, 1))
+
+    legend_elements = [
+        Patch(facecolor="#e74c3c", alpha=0.7, label="Single-Use"),
+        Patch(facecolor="#3498db", alpha=0.7, label="Multi-Use"),
+    ]
+    ax.legend(
+        handles=legend_elements, fontsize=10, loc="upper left", bbox_to_anchor=(1, 1)
+    )
 
     ax.set_ylabel("Cyclomatic Complexity", fontsize=11, fontweight="bold")
     ax.set_title(
         "Complexity Independence: Reused vs Single-Use Fixtures\n"
         "(Similar distributions — complexity is independent of reuse)",
-        fontsize=12, fontweight="bold"
+        fontsize=12,
+        fontweight="bold",
     )
     ax.set_ylim(0, fixtures["cyclomatic_complexity"].max() + 1)
     ax.grid(axis="y", alpha=0.3)
