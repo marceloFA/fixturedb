@@ -117,7 +117,7 @@ def clone_repo(
       3. Verify commit count ≥50
       4. Verify test file count ≥5 (local count, more accurate than API)
 
-    Returns (repo_id, status, pinned_commit_or_None).
+    Returns (repo_id, status, pinned_commit_or_None, skip_reason_or_None).
     status is one of: 'cloned' | 'skipped' | 'error'
     """
     target_dir = CLONES_DIR / full_name.replace("/", "__")
@@ -129,7 +129,7 @@ def clone_repo(
         try:
             commit = _get_head_sha(target_dir)
             logger.debug(f"[clone] {full_name} already present at {commit[:8]}")
-            return repo_id, "cloned", commit
+            return repo_id, "cloned", commit, None
         except Exception:
             # Directory exists but is broken/partial — wipe and re-clone
             logger.debug(
@@ -143,12 +143,12 @@ def clone_repo(
         logger.debug(
             f"[clone] Skip {full_name}: remote not accessible or repo does not exist"
         )
-        return repo_id, "error", None
+        return repo_id, "error", None, None
 
     # Pre-check 2: Quick verify via GitHub API that repo has test files
     # This avoids cloning repos with zero test files (common for non-test projects)
     if not _has_sufficient_test_files(full_name, language):
-        return repo_id, "skipped", None
+        return repo_id, "skipped", None, "insufficient test files (GitHub API check)"
 
     logger.info(f"[clone] Cloning {full_name} …")
     try:
@@ -170,18 +170,18 @@ def clone_repo(
         if result.returncode != 0:
             msg = result.stderr.strip()[:300]
             logger.warning(f"[clone] Failed {full_name}: {msg}")
-            return repo_id, "error", None
+            return repo_id, "error", None, None
 
     except subprocess.TimeoutExpired:
         shutil.rmtree(target_dir, ignore_errors=True)
-        return repo_id, "error", "clone timed out"
+        return repo_id, "error", None, None
 
     # Quality filter 1: commit count
     commit_count = _count_commits(target_dir)
     if commit_count < MIN_COMMITS:
         shutil.rmtree(target_dir, ignore_errors=True)
         logger.debug(f"[clone] Skip {full_name}: only {commit_count} commits")
-        return repo_id, "skipped", None
+        return repo_id, "skipped", None, f"insufficient commits ({commit_count} < {MIN_COMMITS})"
 
     # Quality filter 2: test file count
     config = LANGUAGE_CONFIGS.get(language)
@@ -189,13 +189,13 @@ def clone_repo(
     if test_file_count < MIN_TEST_FILES:
         shutil.rmtree(target_dir, ignore_errors=True)
         logger.debug(f"[clone] Skip {full_name}: only {test_file_count} test files")
-        return repo_id, "skipped", None
+        return repo_id, "skipped", None, f"insufficient test files ({test_file_count} < {MIN_TEST_FILES})"
 
     commit = _get_head_sha(target_dir)
     logger.info(
         f"[clone] ✓ {full_name} " f"({test_file_count} test files, commit {commit[:8]})"
     )
-    return repo_id, "cloned", commit
+    return repo_id, "cloned", commit, None
 
 
 # ---------------------------------------------------------------------------
@@ -394,12 +394,12 @@ def clone_pending_repos(
             for row in batch
         }
         for future in as_completed(futures):
-            repo_id, status, commit = future.result()
+            repo_id, status, commit, skip_reason = future.result()
             summary[status] = summary.get(status, 0) + 1
             processed += 1
 
             with db_session() as conn:
-                set_repo_status(conn, repo_id, status, pinned_commit=commit)
+                set_repo_status(conn, repo_id, status, skip_reason=skip_reason, pinned_commit=commit)
 
             # Log progress periodically
             if processed % progress_interval == 0 or processed == batch_total:

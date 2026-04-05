@@ -1,7 +1,7 @@
 # FixtureDB — Corpus Collection Pipeline
 
 [![Tests & Coverage](https://github.com/joao-almeida/icsme-nier-2026/actions/workflows/coverage.yml/badge.svg)](https://github.com/joao-almeida/icsme-nier-2026/actions/workflows/coverage.yml)
-![Coverage](./coverage.svg)
+![Coverage](./.github/coverage.svg)
 
 Replication package for the paper:
 

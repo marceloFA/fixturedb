@@ -314,9 +314,9 @@ def extract_repo(repo_id: int, full_name: str, language: str) -> dict:
             set_repo_analysed(
                 conn, repo_id, num_test_files, total_fixtures, total_mocks
             )
-            # Also update status to skipped
+            # Also update status to skipped with reason
             set_repo_status(
-                conn, repo_id, "skipped", f"only {total_fixtures} fixtures found"
+                conn, repo_id, "skipped", skip_reason=f"insufficient fixtures ({total_fixtures} < {MIN_FIXTURES_FOUND})"
             )
         delete_clone(full_name)
         return {"fixtures": 0, "mocks": 0}

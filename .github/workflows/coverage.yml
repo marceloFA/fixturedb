@@ -31,15 +31,16 @@ jobs:
 
     - name: Run tests with coverage
       run: |
-        pytest --cov=collection --cov=eda --cov-report=term --cov-report=xml --cov-report=html -v
+        pytest --cov=collection --cov-report=term-missing --cov-report=xml --cov-report=html -v
       continue-on-error: true
 
     - name: Generate coverage badge
       run: |
-        coverage-badge -o coverage.svg -f
+        coverage-badge -o .github/coverage.svg -f
 
     - name: Display coverage in summary
       run: |
+        echo "## Collection Module Coverage" >> $GITHUB_STEP_SUMMARY
         coverage report >> $GITHUB_STEP_SUMMARY
 
     - name: Commit coverage badge (main branch only)
@@ -47,7 +48,7 @@ jobs:
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
-        git add coverage.svg
+        git add .github/coverage.svg
         git diff --quiet && git diff --staged --quiet || (git commit -m "chore: update coverage badge" && git push)
       continue-on-error: true
 

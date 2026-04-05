@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS repositories (
     status          TEXT DEFAULT 'discovered',
     -- status values: discovered | cloned | analysed | skipped | error
     error_message   TEXT,
+    skip_reason     TEXT,                   -- reason for skipping (few commits, few test files, few fixtures)
     num_test_files  INTEGER DEFAULT 0,      -- count of test files found
     num_fixtures    INTEGER DEFAULT 0,      -- count of fixture definitions
     num_mock_usages INTEGER DEFAULT 0,      -- count of mock usages detected
@@ -252,16 +253,17 @@ def set_repo_status(
     repo_id: int,
     status: str,
     error: str = None,
+    skip_reason: str = None,
     pinned_commit: str = None,
 ) -> None:
     conn.execute(
         """
         UPDATE repositories
-        SET status = ?, error_message = ?,
+        SET status = ?, error_message = ?, skip_reason = ?,
             pinned_commit = COALESCE(?, pinned_commit)
         WHERE id = ?
     """,
-        (status, error, pinned_commit, repo_id),
+        (status, error, skip_reason, pinned_commit, repo_id),
     )
 
 

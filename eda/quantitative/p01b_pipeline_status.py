@@ -25,60 +25,79 @@ from ..eda_common import (
 
 
 def plot_pipeline_status(conn, out_dir, show):
-    repos = qdf(conn, "SELECT status FROM repositories")
+    repos = qdf(conn, "SELECT status, skip_reason FROM repositories")
     if repos.empty:
         print("  [skip] No repositories in DB yet.")
         return
 
-    fig, ax = plt.subplots(figsize=(12, 6), facecolor="#FAFAFA")
+    fig, ax = plt.subplots(figsize=(14, 7), facecolor="#FAFAFA")
 
-    status_order = ["analysed", "skipped", "error", "cloned", "discovered"]
-    status_counts = repos["status"].value_counts().reindex(status_order, fill_value=0)
-    colours = [STATUS_PALETTE[s] for s in status_order]
-    raw = [int(status_counts[s]) for s in status_order]
-    total = sum(raw)
-
-    # Filter out zero-count statuses for cleaner pie chart
-    nonzero_statuses = []
-    nonzero_counts = []
-    nonzero_colours = []
-    for status, count, color in zip(status_order, raw, colours):
+    # For skipped repos, break down by skip reason
+    status_counts = {}
+    for status in ["analysed", "error", "discovered", "cloned"]:
+        count = (repos["status"] == status).sum()
         if count > 0:
-            nonzero_statuses.append(status)
-            nonzero_counts.append(count)
-            nonzero_colours.append(color)
+            status_counts[status] = count
+    
+    # For skipped repos, group by skip_reason
+    skipped = repos[repos["status"] == "skipped"]
+    if len(skipped) > 0:
+        skip_reason_counts = skipped["skip_reason"].fillna("unknown").value_counts().to_dict()
+        status_counts.update({f"skipped: {reason}": count for reason, count in skip_reason_counts.items()})
+    
+    # Organize pie chart: "analysed" first, then "error"/"discovered"/"cloned", then skip reasons
+    pie_order = ["analysed"]
+    if "error" in status_counts:
+        pie_order.append("error")
+    if "discovered" in status_counts:
+        pie_order.append("discovered")
+    if "cloned" in status_counts:
+        pie_order.append("cloned")
+    # Add skip reasons in order of frequency
+    pie_order.extend([k for k in status_counts.keys() if k.startswith("skipped:")])
+    
+    pie_data = [status_counts[s] for s in pie_order if s in status_counts]
+    pie_labels = []
+    pie_colors = []
+    
+    for label in pie_order:
+        if label in status_counts:
+            if label.startswith("skipped:"):
+                skip_reason = label.replace("skipped: ", "")
+                pie_labels.append(f"Skipped\n({skip_reason})")
+                pie_colors.append(STATUS_PALETTE.get("skipped", "#FFB74D"))
+            else:
+                pie_labels.append(label.capitalize())
+                pie_colors.append(STATUS_PALETTE.get(label, "#CCCCCC"))
 
-    # Create pie chart with counts in legend
+    total = sum(pie_data)
     wedges, texts, autotexts = ax.pie(
-        nonzero_counts,
-        labels=None,
-        colors=nonzero_colours,
+        pie_data,
+        labels=pie_labels,
+        colors=pie_colors,
         autopct="%1.1f%%",
         startangle=90,
-        textprops={"fontsize": 10, "fontweight": "bold"},
+        textprops={"fontsize": 9, "fontweight": "bold"},
     )
 
     # Make percentage text white and readable
     for autotext in autotexts:
         autotext.set_color("white")
-        autotext.set_fontsize(10)
+        autotext.set_fontsize(9)
         autotext.set_fontweight("bold")
 
-    # Create legend with status names and counts, plus total
+    # Create legend with counts
     legend_labels = [
-        f"{status.capitalize()}\n(n={count:,})"
-        for status, count in zip(nonzero_statuses, nonzero_counts)
+        f"{pie_labels[i].replace(chr(10), ' ')}: {pie_data[i]:,}"
+        for i in range(len(pie_labels))
     ]
 
-    # Add legend with wedges
-    legend = ax.legend(
-        wedges, legend_labels, fontsize=11, loc="center left", bbox_to_anchor=(1, 0.5)
-    )
+    ax.legend(legend_labels, fontsize=10, loc="center left", bbox_to_anchor=(1, 0.5))
 
-    # Add total text below legend
-    fig.text(0.72, 0.08, f"Total: {total:,} repos", fontsize=11, fontweight="bold")
+    # Add total text
+    fig.text(0.72, 0.05, f"Total: {total:,} repos", fontsize=11, fontweight="bold")
 
-    ax.set_title("Pipeline Status Breakdown", fontsize=14, fontweight="bold", pad=20)
+    ax.set_title("Pipeline Status Breakdown (with Skip Reasons)", fontsize=14, fontweight="bold", pad=20)
 
     plt.tight_layout()
     save_or_show(fig, "01b_pipeline_status", out_dir, show)
