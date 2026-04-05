@@ -98,13 +98,16 @@ between requests and backs off automatically on 403 responses.
 
 Repositories in `discovered` status are shallow-cloned (`git clone --depth 1`)
 in parallel using a configurable thread pool (default: 4 workers).
-After cloning, two **quality filters** are applied:
+After cloning, two **quality filters** are applied to ensure we capture
+repositories with mature testing practices:
 
 - **Commit count** ≥ 50: the pipeline fetches up to 500 commits of history
-  to get a realistic count. Repos below the threshold are marked `skipped`
-  and the clone is deleted.
+  to get a realistic count. This threshold filters out prototype and toy
+  projects. Repos below the threshold are marked `skipped` and the clone is deleted.
 - **Test file count** ≥ 5: path and suffix heuristics are used to count
-  test files. Repos below the threshold are marked `skipped`.
+  test files (Ahmed et al., 2025). Repos with fewer test files suggest
+  minimal testing culture and are marked `skipped`. This aligns with observed
+  patterns in large-scale test suite studies (Pan et al., 2025).
 
 Repos passing both filters are marked `cloned`. The clone directory is kept
 until extraction completes.

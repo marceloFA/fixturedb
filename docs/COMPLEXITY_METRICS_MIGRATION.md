@@ -40,6 +40,7 @@ def with_if():
 - **Purpose**: Calculate cognitive complexity for Python (SonarQube standard)
 - **Language**: Python only
 - **Integration**: [collection/complexity_provider.py](../collection/complexity_provider.py)
+- **Reference**: While cognitive complexity was designed for production code, recent work by Ouédraogo et al. (2025) shows that adapting complexity metrics for unit tests (rather than using them as-is) provides better semantic meaning, particularly for fixture code which has distinct structural patterns (e.g., setup sequences, assertion density)
 
 **What is Cognitive Complexity?**
 An extension of cyclomatic complexity that weights code by nesting depth - the core insight is that deeply nested code is harder to understand than flat code.

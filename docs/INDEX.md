@@ -21,6 +21,8 @@ This folder contains the complete documentation for FixtureDB, split into dedica
 15. **[CSV User Guide for Data Analysis](15-csv-user-guide.md)** — How to import and analyze CSVs in Excel, Python (pandas), and R
 16. **[Language-Specific Fixture CSV Export](15-language-specific-csv-export.md)** — Python/Java/JavaScript fixtures for Zenodo
 17. **[Testing Strategy & Execution](14-testing.md)** — Test suite overview, categories, and how to run
+18. **[Data Pipeline Overview](16-data-pipeline-overview.md)** — System architecture and pipeline orchestration
+19. **[Scientific References](19-references.md)** — Papers and works that inform FixtureDB methodology
 
 ## Technical Methodology
 

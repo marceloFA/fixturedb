@@ -21,7 +21,7 @@ This document audits all **quantitative metrics** in the fixture database and id
 
 ## Part 1: Fixture-Level Metrics (Primary Analysis)
 
-The `fixtures` table in our database collects 10 quantitative metrics per fixture definition:
+Large-scale empirical studies of test suites (Pan et al., 2025; Ahmed et al., 2025) require comprehensive quantitative characterization to enable reproducible analysis and fine-grained insights into testing practices. The `fixtures` table collects 10 quantitative metrics per fixture definition to support this goal:
 
 | Metric | Type | Current Implementation | External Tool Available? | Recommendation |
 |--------|------|----------------------|------------------------|-----------------|

@@ -22,11 +22,7 @@ records the framework used and the mocked target identifier.
 
 ## Why this dataset matters
 
-Prior empirical work on fixtures (TestHound, TestEvoHound) and on mocking
-(Mostafa & Wang 2014, Spadini et al. 2017, Chaker et al. 2024) is exclusively
-Java-based. FixtureDB is the first cross-language resource that treats the
-fixture as its primary unit of analysis, enabling research that was previously
-impossible.
+Prior empirical work on fixtures (TestHound, TestEvoHound) has been exclusively Java-based. Meanwhile, large-scale empirical studies of test suites (Hamster; Pan et al., 2025) and test mocking practices reveal widespread challenges with fixture design and mock usage across languages (Ahmed et al., 2025). FixtureDB is the first cross-language resource that treats the fixture as its primary unit of analysis, enabling research that was previously impossible and directly addressing the multi-language gap in testing empirics.
 
 ## Dataset Composition
 

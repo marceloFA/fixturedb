@@ -15,10 +15,10 @@ All collection parameters live in `collection/config.py`.
 
 ## Star tiers
 
-| Tier       | `stars` range | Comparable to |
-|------------|---------------|---------------|
-| `core`     | ≥ 500         | Hamster (arXiv:2509.26204) selection criterion |
-| `extended` | 100–499       | Common MSR floor; adds diversity |
+| Tier       | `stars` range | Rationale |
+|------------|---------------|----------|
+| `core`     | ≥ 500         | Threshold used in Hamster study (Pan et al., 2025). High-quality, mature projects with established testing practices. |
+| `extended` | 100–499       | Adds diversity and smaller/emerging projects. 100-star floor aligns with MSR empirical study conventions and balances between popularity and novelty. |
 
 ## Language Survival Rates
 
@@ -41,11 +41,11 @@ Lower rates = harder to find qualifying repos; higher rates = abundant fixture u
 
 ## Quality filters (post-clone)
 
-| Parameter             | Default | Effect |
-|-----------------------|---------|--------|
-| `MIN_TEST_FILES`      | 5       | Repos with fewer test files are marked `skipped` |
-| `MIN_COMMITS`         | 50      | Repos with fewer commits are marked `skipped` |
-| `MIN_FIXTURES_FOUND`  | 1       | Repos where extraction finds zero fixtures are marked `skipped` |
+| Parameter             | Default | Rationale |
+|-----------------------|---------|----------|
+| `MIN_TEST_FILES`      | 5       | Empirical threshold; repos with fewer test files likely lack testing culture. Aligned with Ahmed et al. (2025) observations on test project characteristics. |
+| `MIN_COMMITS`         | 50      | Ensures repositories have sufficient history and are non-trivial projects. Avoids prototype/example repos. |
+| `MIN_FIXTURES_FOUND`  | 1       | Only repositories with at least one fixture definition are included in the final dataset (post-extraction filter). Avoids cluttering with test-only but fixture-less repos. |
 
 ## Pipeline tuning
 

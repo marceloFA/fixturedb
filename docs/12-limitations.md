@@ -4,10 +4,12 @@
 
 The corpus is drawn from repositories with ≥ 100 GitHub stars. Popular,
 actively maintained projects may exhibit higher test discipline than typical
-open-source software. A prior study from our institution (Coelho et al.,
-MSR 2020) shows that star-based sampling over-represents JavaScript projects
-and web frameworks; this is why `star_tier` is recorded and why we recommend
-stratifying analyses by tier.
+open-source software. This is a known limitation in empirical software
+engineering studies (Hamster study by Pan et al., 2025) which also used
+star-based sampling to ensure sufficient test coverage. To mitigate this bias
+and improve generalizability, the dataset records `star_tier` (`core` for ≥500
+stars, `extended` for 100–499) and we recommend stratifying all analyses by tier.
+This allows researchers to study both popular and emerging projects separately.
 
 ## Go language exclusion
 
