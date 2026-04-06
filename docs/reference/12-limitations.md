@@ -31,6 +31,36 @@ or unusual coding styles may produce false negatives. The `raw_source`
 column is included in the SQLite file specifically so that researchers can
 re-run or improve detection against the original fixture text.
 
+## Fixture detection false-negative rates
+
+Fixture detection uses syntax-based patterns (decorators, annotations, named methods) to identify fixture definitions. While this approach provides high precision, some fixtures using uncommon idioms may be missed.
+
+### Expected Detection Recall by Language
+
+| Language   | Expected Recall | Notes |
+|------------|-----------------|-------|
+| Python     | >95%            | Strong decorator standardization (`@pytest.fixture`, `setUp`/`tearDown` method names). Import variations or dynamically-created fixtures may be missed. |
+| Java       | >95%            | Annotation-based detection (@Before, @BeforeClass, @After, @AfterEach) is unambiguous. Custom base class patterns are caught. |
+| JavaScript | >90%            | Test framework conventions vary (Jest, Mocha, Jasmine, Vitest). Helper functions not matching common naming patterns may be missed. |
+| TypeScript | >90%            | Same as JavaScript; type annotations do not improve detection of fixtures, which rely on runtime hook names. |
+
+### Sources of False Negatives
+
+1. **Custom helper functions**: Functions that implement fixture-like behavior (setup/teardown) but don't match standard naming patterns (e.g., `prepareTestData()` instead of `setUp()`)
+2. **Metaprogrammed fixtures**: Dynamic fixture creation using `eval()`, `exec()`, or factory patterns that generate fixtures at runtime
+3. **Non-standard fixture mechanisms**: Project-specific setup/teardown wrappers that abstract the standard framework APIs
+4. **Language-specific edge cases**:
+   - **Python**: Nested functions or lambdas used as fixtures without `@pytest.fixture` decorator
+   - **JavaScript**: Dynamic test hook registration or custom test runners that don't use standard `beforeEach` patterns
+
+### Mitigation
+
+- The `raw_source` column in SQLite contains the full fixture source code, allowing researchers to:
+  - Manually audit missed fixtures on important projects
+  - Implement improved detection heuristics on the original source
+  - Quantify false-negative rates for specific use cases
+- To assess detection quality for your research: sample 100–200 test files per language, manually check for fixtures our detector missed, and calculate recall
+
 ---
 
 ## Phase 3 Advanced Metrics Limitations (April 2026)
