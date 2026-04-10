@@ -3,14 +3,14 @@ Integration tests for complexity metrics using third-party libraries.
 
 This test suite validates that:
 - Lizard library (cyclomatic complexity) integrates correctly
-- cognitive_complexity library (Python) integrates correctly
+- complexipy library (Python) integrates correctly
 - Metrics are calculated and assigned to fixtures
 - Cross-language support works
 - Edge cases are handled gracefully
 
 NOTE: These are integration tests, not algorithm validation tests.
 The accuracy of complexity calculations is delegated to lizard and
-cognitive_complexity libraries, which are well-established third-party tools.
+complexipy libraries, which are well-established third-party tools.
 
 Previously, this module tested custom tree-sitter based implementations.
 Now we validate the integration with proven, industry-standard libraries.

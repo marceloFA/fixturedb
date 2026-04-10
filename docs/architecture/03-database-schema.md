@@ -90,7 +90,7 @@ One row per fixture definition. This is the primary analysis table.
 | `end_line`                     | INTEGER | 1-indexed end line |
 | `loc`                          | INTEGER | Non-blank lines of code |
 | `cyclomatic_complexity`        | INTEGER | McCabe complexity (1 + branching statements), calculated via **Lizard library** |
-| `cognitive_complexity`         | INTEGER | SonarQube-standard cognitive complexity (nesting-depth-weighted), calculated via **cognitive-complexity library** for Python and formula-based estimate for other languages |
+| `cognitive_complexity`         | INTEGER | SonarQube-standard cognitive complexity (nesting-depth-weighted), calculated via **complexipy library** for Python and formula-based estimate for other languages |
 | `max_nesting_depth`            | INTEGER | Maximum block nesting level (depth of nested if/for/while/try statements), computed from AST |
 | `num_objects_instantiated`     | INTEGER | Estimated constructor calls inside the fixture |
 | `num_external_calls`           | INTEGER | Estimated I/O / external API calls (DB, HTTP, filesystem, env) |

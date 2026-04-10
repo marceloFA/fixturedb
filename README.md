@@ -22,7 +22,7 @@ on Zenodo at **TODO: Zenodo DOI**.
 | **GitHub API Version** | v3 REST API |
 | **Tree-sitter Grammar** | v0.21.0+ (Python, Java, JavaScript, TypeScript) |
 | **Complexity Tool** | Lizard v1.21.0+ |
-| **Cognitive Complexity** | cognitive_complexity v1.3.0+ |
+| **Cognitive Complexity** | complexipy v5.0.0+ |
 | **Python Version** | 3.8+ (see requirements.txt) |
 
 For exact tool versions and reproducibility details, see [docs/04-data-collection.md](docs/04-data-collection.md).

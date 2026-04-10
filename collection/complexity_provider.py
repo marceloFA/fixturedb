@@ -4,11 +4,11 @@ Third-party metric collection for code complexity and structure analysis.
 This module wraps industry-standard tools to calculate code metrics across all
 5 supported languages (Python, Java, JavaScript, TypeScript, Go).
 
-METRICS PROVIDED (via Lizard + cognitive-complexity libraries)
-=============================================================
+METRICS PROVIDED (via Lizard + complexipy libraries)
+====================================================
 
 - Cyclomatic Complexity: via Lizard library (all languages)
-- Cognitive Complexity: via cognitive_complexity library (Python) with fallback formula (other languages)
+- Cognitive Complexity: via complexipy library (Python) with fallback formula (other languages)
 - Number of Parameters: via Lizard library (all languages) — Phase 2 addition
 
 BENEFITS over custom tree-sitter implementation:
@@ -21,13 +21,12 @@ BENEFITS over custom tree-sitter implementation:
 See docs/COMPLEXITY_METRICS_MIGRATION.md for complete methodology and justification.
 """
 
-import ast
 import logging
 from pathlib import Path
 from typing import Optional
 
 from lizard import analyze_file as lizard_analyze_file
-from cognitive_complexity.api import get_cognitive_complexity
+from complexipy import code_complexity
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +63,7 @@ def get_cyclomatic_complexity(file_path: Path, language: str) -> Optional[int]:
 
 def get_cognitive_complexity_python(file_path: Path) -> Optional[int]:
     """
-    Get cognitive complexity using the cognitive_complexity library.
+    Get cognitive complexity using the complexipy library.
 
     Cognitive complexity extends cyclomatic complexity by:
     - Weighting nested structures more heavily
@@ -80,13 +79,14 @@ def get_cognitive_complexity_python(file_path: Path) -> Optional[int]:
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             source = f.read()
-        tree = ast.parse(source)
 
-        # Get complexity of first function found
-        if tree.body:
-            for node in tree.body:
-                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    return get_cognitive_complexity(node)
+        # Get complexity of first function found using complexipy
+        result = code_complexity(source)
+        
+        # complexipy returns code-level complexity for the entire file
+        # For single-function extraction, return the file-level complexity
+        if result and hasattr(result, 'complexity'):
+            return result.complexity
     except Exception as e:
         logger.debug(
             f"Failed to get cognitive complexity for {file_path}: {type(e).__name__}: {e}"
@@ -199,17 +199,13 @@ def analyze_function_complexity(
 
             # Compute cognitive complexity based on language
             if language.lower() == "python":
-                # Use cognitive_complexity library for Python (most accurate)
+                # Use complexipy library for Python (most accurate)
                 try:
-                    tree = ast.parse(source_text)
-                    for node in tree.body:
-                        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                            cc = get_cognitive_complexity(node)
-                            if cc is not None:
-                                metrics["cognitive_complexity"] = cc
-                                break
+                    result = code_complexity(source_text)
+                    if result and hasattr(result, 'complexity'):
+                        metrics["cognitive_complexity"] = result.complexity
                 except Exception as e:
-                    # Fall back to formula if cognitive_complexity library fails
+                    # Fall back to formula if complexipy library fails
                     # Use cyclomatic complexity as proxy (nesting depth not available from Lizard)
                     logger.debug(
                         f"Failed to analyze Python cognitive complexity: {type(e).__name__}: {e}"

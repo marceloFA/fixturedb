@@ -32,9 +32,9 @@ AST Parsing:
   - tree-sitter-typescript     v0.21.0+
 
 Code Metrics:
-  - Lizard                      v1.21.3+ (cyclomatic complexity, cognitive complexity, LOC, 
+  - Lizard                      v1.21.3+ (cyclomatic complexity, LOC, 
                                           parameters, external call count)
-  - cognitive-complexity        v1.3.0+ (Python cognitive complexity, SonarQube-standard)
+  - complexipy                  v5.0.0+ (Python cognitive complexity, SonarQube-standard)
 
 Runtime:
   - Python                      3.8+

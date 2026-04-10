@@ -111,9 +111,9 @@ For each detected fixture, the system computes the following quantitative metric
 - **Accuracy**: Academic standard metric, widely used in SonarQube and Codecov
 
 **Cognitive Complexity**
-- **Python**: Calculated via [cognitive-complexity library](https://github.com/sonarSource/cognitive-complexity) v1.3.0+ (official SonarQube implementation)
+- **Python**: Calculated via [complexipy library](https://github.com/rohaquinlop/complexipy) v5.0.0+ (fast Rust-based implementation of SonarQube cognitive complexity)
   - Metric: Nesting-depth-weighted complexity (higher nesting increases cost)
-  - Formula: Σ(nesting_depth) over all control structures
+  - Formula: Σ(nesting_depth) over all control structures, following SonarQube's G. Ann Campbell research
   - Example: Three nested if-statements at depths 1, 2, 3 contribute 1+2+3=6 to cognitive complexity (vs. cyclomatic complexity of 3)
   
 - **Other languages** (Java, JavaScript, TypeScript, Go): Formula-based fallback
@@ -344,7 +344,7 @@ This section provides the complete audit of which metrics use external tools vs.
 |--------|------|-------------|-------|-------|-----------|
 | `loc` | Code Property | ✅ Lizard v1.21.3+ | P2 | Fixture | Industry-standard code metric; consistent with fix-level metrics |
 | `cyclomatic_complexity` | Code Property | ✅ Lizard v1.21.3+ | P1 | Fixture | McCabe's standard; widely recognized metric |
-| `cognitive_complexity` | Code Property | ✅ Lizard + cognitive-complexity v1.3.0+ | P1 | Fixture | SonarQube standard; Python-native, fallback formula for others |
+| `cognitive_complexity` | Code Property | ✅ Lizard + complexipy v5.0.0+ | P1 | Fixture | SonarQube standard; Python-native, fallback formula for others |
 | `num_parameters` | Syntax | ✅ Lizard v1.21.3+ | P2 | Fixture | Direct extraction from Lizard's parameter_count |
 | `num_objects_instantiated` | Semantic | ✅ Lizard v1.21.3+ (post-processed) | P2 | Fixture | Filters Lizard's external_call_count for constructor patterns |
 | `num_external_calls` | Semantic | ❌ Custom regex | P2 | Fixture | Domain-specific I/O detection (not general function calls) |
@@ -365,9 +365,9 @@ This section provides the complete audit of which metrics use external tools vs.
    - Replaces: Custom Tree-sitter decision point counting
    - Benefit: McCabe-standard metric, proven library
 
-2. **cognitive_complexity** (P1) → cognitive-complexity v1.3.0+ (Python) + formula (others)
+2. **cognitive_complexity** (P1) → complexipy v5.0.0+ (Python) + formula (others)
    - Replaces: Custom complexity heuristics
-   - Benefit: SonarQube-standard metric for Python; formula fallback for cross-language consistency
+   - Benefit: SonarQube-standard metric for Python with fast Rust implementation; formula fallback for cross-language consistency
 
 3. **num_parameters** (P2) → Lizard v1.21.3+
    - Replaces: Direct AST parameter counting
