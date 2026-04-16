@@ -4,14 +4,18 @@ Manual validation scaffold.
 Samples N fixtures per language from the database and exports them to a CSV
 that you fill in manually (column: `is_true_fixture`, values: 1 or 0).
 
+The CSV includes a 'github_url' column with clickable links to the actual code
+on GitHub (at the specific commit and line range), making verification easier.
+
 After filling in the CSV, run with --compute to calculate precision/recall.
 
 Usage:
-    # Step 1 — generate the sample
+    # Step 1 — generate the sample (includes github_url column)
     python pipeline.py validate --sample 50
 
     # Step 2 — open validation/sample_<timestamp>.csv in a spreadsheet,
-    #           read each raw_source, and set is_true_fixture to 1 or 0
+    #           click github_url to see code, read raw_source, 
+    #           and set is_true_fixture to 1 or 0
 
     # Step 3 — compute precision/recall
     python pipeline.py validate --compute validation/sample_<timestamp>.csv
@@ -69,10 +73,13 @@ def generate_sample(n_per_language: int = 50) -> Path:
                     f.id            AS fixture_id,
                     r.language,
                     r.full_name     AS repo,
+                    r.clone_url,
+                    r.pinned_commit,
                     tf.relative_path AS file_path,
                     f.fixture_type,
                     f.name          AS fixture_name,
                     f.start_line,
+                    f.end_line,
                     f.loc,
                     f.raw_source
                 FROM fixtures f
@@ -90,6 +97,26 @@ def generate_sample(n_per_language: int = 50) -> Path:
                 continue
 
             df = pd.DataFrame([dict(r) for r in rows])
+            
+            # Construct GitHub URLs for each fixture
+            def build_github_url(row):
+                """Build clickable GitHub URL pointing to fixture code."""
+                clone_url = row["clone_url"]
+                commit = row["pinned_commit"] or "HEAD"
+                file_path = row["file_path"]
+                start_line = row["start_line"]
+                end_line = row["end_line"]
+                
+                # Convert clone_url from https://github.com/owner/repo.git to https://github.com/owner/repo
+                github_base = clone_url.rstrip("/")
+                if github_base.endswith(".git"):
+                    github_base = github_base[:-4]
+                
+                # Build URL with line range: https://github.com/owner/repo/blob/commit/path#L10-L20
+                url = f"{github_base}/blob/{commit}/{file_path}#L{start_line}-L{end_line}"
+                return url
+            
+            df["github_url"] = df.apply(build_github_url, axis=1)
             frames.append(df)
             logger.info(f"  {lang}: sampled {len(df)} fixtures")
 
@@ -113,9 +140,10 @@ def generate_sample(n_per_language: int = 50) -> Path:
     logger.info(
         "Instructions:\n"
         "  1. Open the CSV in a spreadsheet editor.\n"
-        "  2. Read each 'raw_source' value.\n"
-        "  3. Set 'is_true_fixture' to 1 (true fixture) or 0 (false positive).\n"
-        "  4. Run: python pipeline.py validate --compute <path_to_csv>"
+        "  2. For each row, click the 'github_url' link to see the code in context.\n"
+        "  3. Read the 'raw_source' and verify it's a real fixture.\n"
+        "  4. Set 'is_true_fixture' to 1 (true fixture) or 0 (false positive).\n"
+        "  5. Run: python pipeline.py validate --compute <path_to_csv>"
     )
     return out_path
 
