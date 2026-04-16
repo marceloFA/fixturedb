@@ -5,6 +5,7 @@
 > **Quick Links:**  
 > - Need SQLite instead? See [Using the Dataset for Research — SQLite Pathway](../usage/09-usage.md)  
 > - Need column definitions? See [Database Schema — CSV Section](../architecture/03-database-schema.md)  
+> - How are metrics calculated? See [Metrics Reference & Calculation Methodology](../architecture/20-metrics-reference.md) (tools used, reliability, academic references)  
 > - Questions about data format? See [Using the Dataset for Research — Comparison](../usage/09-usage.md)
 
 ---

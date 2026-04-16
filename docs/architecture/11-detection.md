@@ -193,6 +193,9 @@ For each mock framework detected, the fixture records:
 For detailed fixture patterns, examples, and framework reference:
 - [16-fixture-patterns-reference.md](../usage/16-fixture-patterns-reference.md) — Comprehensive catalog of all 50+ fixture types, frameworks, detection patterns, and examples across 4 languages (Python, Java, JavaScript, TypeScript)
 
+**For detailed metric calculations, external tools, and academic references:**
+- [20-metrics-reference.md](20-metrics-reference.md) — Complete documentation of all quantitative metrics, including which use external tools (Lizard, complexipy, Tree-sitter) vs. custom implementations, reliability assessments, and academic citations for publication
+
 ---
 
 ## Post-Processing & Relationship Detection (Phase 3, April 2026)

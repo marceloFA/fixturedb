@@ -30,8 +30,8 @@ This folder contains the complete documentation for FixtureDB, organized into se
 - Overview: [Limitations & Threats to Validity](reference/12-limitations.md)
 - Testing: [Testing Strategy](reference/17-testing.md)
 
-### **I want to find framework documentation**
-- Links: [Fixture Detection Logic — Framework References](architecture/11-detection.md#framework-references--official-homepages) — Direct links to 40+ testing and mocking frameworks
+### **I want to understand metrics & calculations**
+- Guide: [Metrics Reference & Calculation Methodology](architecture/20-metrics-reference.md) — External tools (Lizard, complexipy), custom implementations, reliability assessments, academic references
 
 
 ## All Documentation
@@ -46,6 +46,7 @@ This folder contains the complete documentation for FixtureDB, organized into se
 - [Database Schema](architecture/03-database-schema.md)
 - [Configuration Reference](architecture/10-configuration.md)
 - [Fixture Detection Logic](architecture/11-detection.md)
+- [Metrics Reference & Calculation Methodology](architecture/20-metrics-reference.md)
 - [Data Pipeline Overview](architecture/18-data-pipeline-overview.md)
 
 ### Data Collection & Export
