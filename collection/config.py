@@ -307,8 +307,8 @@ LANGUAGE_CONFIGS = {
         min_stars=100,
         toy_target=50,
         full_target=500,
-        test_path_patterns=["test/", "tests/", "testing/", "test_", "conftest.py"],
-        test_file_suffixes=["test_.py", "_test.py", "_tests.py"],
+        test_path_patterns=["test/", "tests/", "testing/"],
+        test_file_suffixes=["test_.py", "_test.py", "_tests.py", "conftest.py"],
     ),
     "java": LanguageConfig(
         name="Java",
