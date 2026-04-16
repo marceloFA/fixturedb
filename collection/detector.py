@@ -184,7 +184,8 @@ def _count_file_loc(src_bytes: bytes) -> int:
     try:
         text = src_bytes.decode("utf-8", errors="replace")
         return _count_loc(text)
-    except Exception:
+    except (AttributeError, ValueError) as e:
+        logger.debug(f"Failed to count LOC: {e}")
         return 0
 
 
@@ -235,27 +236,6 @@ def _compute_nesting_depth(node) -> int:
 # ---------------------------------------------------------------------------
 
 
-def _count_instantiations(node, src_bytes: bytes) -> int:
-    """
-    DEPRECATED: Use Lizard-based num_objects_instantiated via analyze_function_complexity instead.
-
-    This function is kept for reference but is no longer used in the main detection flow.
-    The complexity_provider now handles constructor counting by filtering Lizard's
-    external_call_count for constructor patterns, reducing DIY regex logic.
-
-    Count 'new X(...)' calls (Java/JS/TS/Go) or capitalised call expressions
-    that look like constructors (Python).
-
-    Note: This remains a custom implementation as Lizard's external_call_count
-    measures all function calls, not specifically constructors/object instantiation.
-    """
-    text = _source(node, src_bytes)
-    # Java / JS / TS / Go: new Foo(...)
-    new_calls = len(re.findall(r"\bnew\s+\w+\s*\(", text))
-    # Python: Foo(...) where Foo starts with uppercase
-    py_constructors = len(re.findall(r"\b[A-Z][A-Za-z0-9_]+\s*\(", text))
-    return new_calls + py_constructors
-
 
 def _count_external_calls(node, src_bytes: bytes) -> int:
     """
@@ -282,6 +262,13 @@ def _count_external_calls(node, src_bytes: bytes) -> int:
     ]
     return sum(len(re.findall(p, text)) for p in external_patterns)
 
+
+# ---------------------------------------------------------------------------
+# Constants for snippet extraction and thresholds
+# ---------------------------------------------------------------------------
+
+SNIPPET_CONTEXT_BEFORE = 20  # characters before match in mock detection
+SNIPPET_CONTEXT_AFTER = 60   # characters after match in mock detection
 
 # ---------------------------------------------------------------------------
 # Mock detection (language-agnostic heuristic pass)
@@ -317,8 +304,8 @@ def _extract_mocks(node, src_bytes: bytes) -> list[MockResult]:
     for pattern, framework in MOCK_PATTERNS:
         for m in re.finditer(pattern, text):
             target = m.group(1) if m.lastindex and m.lastindex >= 1 else ""
-            snippet_start = max(m.start() - 20, 0)
-            snippet_end = min(m.end() + 60, len(text))
+            snippet_start = max(m.start() - SNIPPET_CONTEXT_BEFORE, 0)
+            snippet_end = min(m.end() + SNIPPET_CONTEXT_AFTER, len(text))
             snippet = text[snippet_start:snippet_end].replace("\n", " ")
 
             # Count .return_value / .side_effect / when(...).thenReturn style

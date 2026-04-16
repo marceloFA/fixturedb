@@ -18,23 +18,6 @@ All collection parameters live in `collection/config.py`.
 | `core`     | ≥ 500         | Threshold used in Hamster study (Pan et al., 2025). High-quality, mature projects with established testing practices. |
 | `extended` | 100–499       | Adds diversity and smaller/emerging projects. 100-star floor aligns with MSR empirical study conventions and balances between popularity and novelty. |
 
-## Language Survival Rates
-
-**Survival rate** = (discovered repos with ≥1 analyzed fixture) / (repos fetched from GitHub API)
-
-Used for discovery forecasting during collection runs. Empirical rates will be populated as each language collection completes.
-
-| Language       | Survival Rate | Status |
-|----------------|---------------|--------|
-| Python         | *Pending* | Collection in progress |
-| Java           | *Pending* | Collection in progress |
-| JavaScript     | *Pending* | Collection in progress |
-| TypeScript     | *Pending* | Collection in progress |
-| **Default**    | 0.09 (9%)    | Fallback estimate used during collection planning |
-
-Survival rates are empirically determined as collection completes for each language.
-Lower rates = harder to find qualifying repos; higher rates = abundant fixture usage.
-
 ## Quality filters (post-clone)
 
 | Parameter             | Default | Rationale |
@@ -49,8 +32,5 @@ Lower rates = harder to find qualifying repos; higher rates = abundant fixture u
 |------------------------------------|---------|-------|
 | `CLONE_WORKERS`                    | 12      | Parallel clone threads |
 | `CLONE_BATCH_SIZE`                 | 50      | Repos per `clone` invocation (incremental mode) |
-| `EXTRACT_WORKERS`                  | 3       | Parallel extraction workers (respects SQLite single-writer limit) |
-| `MAX_REPOS_PER_ITERATION`          | 500     | Cap on repos processed per collection iteration (all languages) |
-| `MAX_DISCOVERIES_PER_ITERATION`    | 3,000   | Max repos loaded per iteration (disk space management) |
-| `DISCOVERY_SURVIVAL_RATE`          | 0.09    | Fallback discovery→analyzed conversion rate |
-| `DISCOVERY_SAFETY_BUFFER`          | 1.25    | 25% safety buffer on discovery estimates |
+| `EXTRACT_WORKERS`                  | 8       | Parallel extraction workers (balanced for SQLite single-writer limit) |
+| `MAX_COLLECTION_ITERATIONS`        | 10      | Max balanced collection loop iterations (safety limit) |

@@ -198,9 +198,8 @@ class LanguageConfig:
     name: str  # human-readable
     github_language: str  # label used by GitHub search API
     min_stars: int = 100
-    target_repos: int = (
-        1000  # target count of final analyzed repos (with >=1 fixture extracted)
-    )
+    toy_target: int = 50  # target count for toy dataset
+    full_target: int = 500  # target count for full production dataset
 
     # Paths that signal "this is a test file"
     test_path_patterns: list[str] = field(default_factory=list)
@@ -306,15 +305,17 @@ LANGUAGE_CONFIGS = {
         name="Python",
         github_language="Python",
         min_stars=100,
-        target_repos=400,
-        test_path_patterns=["test/", "tests/", "testing/", "test_", "conftest"],
+        toy_target=50,
+        full_target=500,
+        test_path_patterns=["test/", "tests/", "testing/", "test_", "conftest.py"],
         test_file_suffixes=["test_.py", "_test.py", "_tests.py"],
     ),
     "java": LanguageConfig(
         name="Java",
         github_language="Java",
         min_stars=100,
-        target_repos=400,
+        toy_target=50,
+        full_target=500,
         test_path_patterns=["src/test/", "test/", "tests/"],
         test_file_suffixes=["Test.java", "Tests.java", "IT.java", "Spec.java"],
     ),
@@ -322,8 +323,9 @@ LANGUAGE_CONFIGS = {
         name="JavaScript",
         github_language="JavaScript",
         min_stars=100,
-        target_repos=250,
-        test_path_patterns=["__tests__/", "test/", "tests/", "spec/"],
+        toy_target=25,
+        full_target=250,
+        test_path_patterns=["test/", "tests/", "spec/", "__tests__/"],
         test_file_suffixes=[
             ".test.js",
             ".spec.js",
@@ -338,8 +340,9 @@ LANGUAGE_CONFIGS = {
         name="TypeScript",
         github_language="TypeScript",
         min_stars=100,
-        target_repos=150,
-        test_path_patterns=["__tests__/", "test/", "tests/", "spec/"],
+        toy_target=25,
+        full_target=250,
+        test_path_patterns=["test/", "tests/", "spec/", "__tests__/"],
         test_file_suffixes=[
             ".test.ts",
             ".spec.ts",
@@ -448,27 +451,8 @@ LANGUAGE_SURVIVAL_RATES = {
     "typescript": 0.08,  # estimate
 }
 
-# Discovery and collection tuning
-DISCOVERY_SURVIVAL_RATE = (
-    0.09  # fallback/default if language not in LANGUAGE_SURVIVAL_RATES
-)
-DISCOVERY_SAFETY_BUFFER = 1.25  # 25% buffer to reduce iterations
-MAX_DISCOVERIES_PER_ITERATION = 3000  # cap to manage disk space
-MAX_REPOS_PER_ITERATION = (
-    500  # max repos (discovered + cloned + extracted) per collection iteration
-)
-
-# Maximum repos to load per language from SEART-GHS (hard limit for reproducibility)
-MAX_REPOS_PER_LANGUAGE_LOAD = 500  # Do not exceed 500 per language
-
-# Maximum repos to clone in a single run (useful for incremental collection)
+# Clone batch size (used by `clone` command for incremental cloning)
 CLONE_BATCH_SIZE = 50
-
-# Per-language targets for dataset collection
-# Toy dataset: quick validation with smaller extraction (faster testing of pipeline changes)
-# Full dataset: production-quality corpus for research
-TOY_TARGET_REPOS_PER_LANGUAGE = 50
-FULL_TARGET_REPOS_PER_LANGUAGE = 500
 
 # Number of parallel clone workers
 CLONE_WORKERS = 12
@@ -484,3 +468,19 @@ EXTRACT_WORKERS = 8
 # Files that exceed this timeout are skipped to prevent pathological cases
 # (e.g., minified code, massive auto-generated test files, etc.)
 FILE_EXTRACTION_TIMEOUT = 180  # 3 minutes
+
+# ---------------------------------------------------------------------------
+# Pipeline collection thresholds
+# ---------------------------------------------------------------------------
+
+# Maximum iterations in balanced collection loop (safety limit)
+MAX_COLLECTION_ITERATIONS = 10
+
+# File size warning threshold in MB (log warning if file exceeds this during extraction)
+FILE_SIZE_WARN_MB = 10
+
+# Fixture complexity thresholds for fixture categorization
+# Data builder: repos with many objects instantiated (likely factory pattern)
+OBJECTS_DATA_BUILDER_THRESHOLD = 5
+# Parametrized fixtures: repos with moderate reuse/complexity
+OBJECTS_PARAMETRIZED_THRESHOLD = 2

@@ -155,16 +155,6 @@ class TestIsExcluded:
 class TestPerLanguageLimit:
     """Test that 500-repo target is correctly documented as a clone/analyze constraint."""
 
-    def test_max_repos_per_language_target_is_500(self):
-        """Verify that MAX_REPOS_PER_LANGUAGE_LOAD constant is 500.
-
-        This is a TARGET for the clone/analyze phase, not a hard limit during load.
-        Repos loaded here may be filtered out later if they lack test files/fixtures.
-        """
-        from collection.config import MAX_REPOS_PER_LANGUAGE_LOAD
-
-        assert MAX_REPOS_PER_LANGUAGE_LOAD == 500
-
     def test_load_all_languages_no_per_language_limit(self):
         """Test that load_all_languages() does not enforce a per-language limit.
 

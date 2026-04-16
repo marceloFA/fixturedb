@@ -223,7 +223,8 @@ def db_is_initialised(db_path: Path = DB_PATH) -> bool:
         ).fetchone()
         conn.close()
         return result is not None
-    except Exception:
+    except (sqlite3.DatabaseError, OSError) as e:
+        logger.debug(f"Could not check database initialization: {e}")
         return False
 
 

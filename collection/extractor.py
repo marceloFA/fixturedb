@@ -17,6 +17,7 @@ from collection.config import (
     MIN_FIXTURES_FOUND,
     EXTRACT_WORKERS,
     FILE_EXTRACTION_TIMEOUT,
+    FILE_SIZE_WARN_MB,
     MAX_FILE_SIZE_BYTES,
     NON_CODE_EXTENSIONS,
 )
@@ -153,11 +154,43 @@ def _find_test_files(repo_dir: Path, language: str) -> list[Path]:
         if any(name.endswith(ext) for ext in NON_CODE_EXTENSIONS):
             continue
 
-        matched = any(name.endswith(suf.lower()) for suf in config.test_file_suffixes)
+        matched = False
+        name_lower = name.lower()
+        
+        # Check file suffix patterns (handles prefix patterns like "test_", suffix patterns like "_test.py", and full names like "conftest.py")
+        for pat in config.test_file_suffixes:
+            pat_lower = pat.lower()
+            if pat_lower.startswith("test_"):
+                # Prefix pattern like "test_.py" - match files starting with "test_" and ending with extension
+                if name_lower.startswith("test_") and name_lower.endswith(pat_lower.split("test_")[1]):
+                    matched = True
+                    break
+            elif pat_lower == "conftest.py":
+                # Exact filename match
+                if name_lower == "conftest.py":
+                    matched = True
+                    break
+            else:
+                # Suffix patterns (like ".test.js", "_test.py", "Test.java", "IT.java", "Spec.java")
+                # Check if filename ends with this pattern (case-insensitive)
+                if name_lower.endswith(pat_lower):
+                    matched = True
+                    break
+        
         if not matched:
-            matched = any(
-                pat.lower() in rel.lower() for pat in config.test_path_patterns
-            )
+            # Match path patterns with proper boundary checking
+            # Directory patterns should match complete path components only
+            rel_lower = rel.lower()
+            rel_parts = rel_lower.split("/")
+            for pat in config.test_path_patterns:
+                pat_lower = pat.lower()
+                # All test_path_patterns end with "/" by design
+                if pat_lower.endswith("/"):
+                    dir_pattern = pat_lower.rstrip("/")
+                    # Check if the directory pattern appears as a complete path component
+                    if dir_pattern in rel_parts:
+                        matched = True
+                        break
 
         if matched:
             # Skip files larger than MAX_FILE_SIZE_BYTES (likely not real test files)
@@ -220,7 +253,7 @@ def extract_repo(repo_id: int, full_name: str, language: str) -> dict:
             file_size_bytes = tf_path.stat().st_size
             file_size_mb = file_size_bytes / (1024 * 1024)
             # info(f"[extract] Processing test file: {relative} ({file_size_mb:.2f} MB)")
-            if file_size_mb > 10:
+            if file_size_mb > FILE_SIZE_WARN_MB:
                 logger.warning(
                     f"[extract] Large test file in {full_name}: {relative} is {file_size_mb:.2f} MB"
                 )
@@ -371,6 +404,7 @@ def extract_all_cloned(
     language: str | None = None,
     target_analyzed: int | None = None,
     target_per_language: int | None = None,
+    target_per_language_dict: dict[str, int] | None = None,
 ) -> dict:
     """
     Extract fixtures from repos in 'cloned' status using parallel workers.
@@ -380,11 +414,13 @@ def extract_all_cloned(
 
     If target_analyzed is set, stop early when global target is reached.
     If target_per_language is set, stop early when each language reaches that count.
+    If target_per_language_dict is set, stop early when each language reaches its specific count.
 
     Args:
         language: Filter to specific language (or None for all)
         target_analyzed: Optional global target count; stop when reached
         target_per_language: Optional per-language target; stop when each language reaches this count
+        target_per_language_dict: Optional dict mapping language names to their specific target counts
 
     Returns:
         dict with extraction summary and 'early_stopped' flag
@@ -392,7 +428,7 @@ def extract_all_cloned(
     with db_session() as conn:
         # If using per-language targets, get current counts to skip already-satisfied languages
         languages_to_skip = set()
-        if target_per_language:
+        if target_per_language or target_per_language_dict:
             from collection.config import LANGUAGE_CONFIGS
 
             cursor = conn.execute("""
@@ -402,11 +438,20 @@ def extract_all_cloned(
                 GROUP BY language
             """)
             lang_counts = {row["language"]: row["count"] for row in cursor.fetchall()}
-            languages_to_skip = {
-                lang
-                for lang in LANGUAGE_CONFIGS.keys()
-                if lang_counts.get(lang, 0) >= target_per_language
-            }
+            
+            if target_per_language_dict:
+                languages_to_skip = {
+                    lang
+                    for lang in LANGUAGE_CONFIGS.keys()
+                    if lang_counts.get(lang, 0) >= target_per_language_dict.get(lang, 0)
+                }
+            else:
+                languages_to_skip = {
+                    lang
+                    for lang in LANGUAGE_CONFIGS.keys()
+                    if lang_counts.get(lang, 0) >= target_per_language
+                }
+            
             if languages_to_skip:
                 logger.info(
                     f"Skipping extraction for languages already at target: {languages_to_skip}"
@@ -459,6 +504,10 @@ def extract_all_cloned(
     if target_per_language:
         logger.info(
             f"Will stop early when each language reaches {target_per_language} analyzed repos"
+        )
+    if target_per_language_dict:
+        logger.info(
+            f"Will stop early when each language reaches its target: {target_per_language_dict}"
         )
 
     totals: dict[str, int] = {"fixtures": 0, "mocks": 0}
@@ -520,6 +569,31 @@ def extract_all_cloned(
                     all_reached = all(
                         lang_counts.get(lang, 0) >= target_per_language
                         for lang in LANGUAGE_CONFIGS.keys()
+                    )
+
+                    if all_reached:
+                        logger.info(
+                            f"Per-language targets reached: {lang_counts}. Stopping extraction early."
+                        )
+                        should_stop = True
+
+            if target_per_language_dict and not should_stop:
+                with db_session() as conn:
+                    # Check per-language analyzed counts
+                    cursor = conn.execute("""
+                        SELECT language, COUNT(DISTINCT r.id) as count
+                        FROM repositories r
+                        WHERE r.status = 'analysed' AND EXISTS (SELECT 1 FROM fixtures WHERE repo_id = r.id)
+                        GROUP BY language
+                    """)
+                    lang_counts = {
+                        row["language"]: row["count"] for row in cursor.fetchall()
+                    }
+
+                    # Check if all languages have reached their specific targets
+                    all_reached = all(
+                        lang_counts.get(lang, 0) >= target_per_language_dict.get(lang, 0)
+                        for lang in target_per_language_dict.keys()
                     )
 
                     if all_reached:

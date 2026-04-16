@@ -204,7 +204,7 @@ def analyze_function_complexity(
                     result = code_complexity(source_text)
                     if result and hasattr(result, "complexity"):
                         metrics["cognitive_complexity"] = result.complexity
-                except Exception as e:
+                except (ValueError, ImportError) as e:
                     # Fall back to formula if complexipy library fails
                     # Use cyclomatic complexity as proxy (nesting depth not available from Lizard)
                     logger.debug(
@@ -219,7 +219,7 @@ def analyze_function_complexity(
                     metrics["cyclomatic_complexity"], 1
                 )
 
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
         # Return defaults (including loc=0) on any error
         logger.debug(
             f"Complexity analysis failed for source snippet: {type(e).__name__}: {e}"
@@ -229,7 +229,7 @@ def analyze_function_complexity(
         if temp_file is not None:
             try:
                 temp_file.unlink(missing_ok=True)
-            except Exception as e:
+            except (OSError, PermissionError) as e:
                 logger.debug(
                     f"Failed to clean up temp file {temp_file}: {type(e).__name__}: {e}"
                 )

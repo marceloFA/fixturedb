@@ -23,11 +23,11 @@ from pathlib import Path
 
 import pandas as pd
 
-from eda_common import load_db, setup_style
+from .eda_common import load_db, setup_style
 
 # Import plot functions from qualitative submodule
-from qualitative.p04_domain_distribution import plot_domain_distribution
-from qualitative.p08_fixture_categories import plot_fixture_categories
+from .qualitative.p04_domain_distribution import plot_domain_distribution
+from .qualitative.p08_fixture_categories import plot_fixture_categories
 
 # ---------------------------------------------------------------------------
 # Paths
