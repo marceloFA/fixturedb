@@ -55,8 +55,7 @@ TABLE: repositories
   pushed_at        TEXT     ISO 8601 last push date
   clone_url        TEXT     HTTPS clone URL
   pinned_commit    TEXT     SHA of the HEAD commit analysed (reproducibility)
-  domain           TEXT     web | data | cli | infra | library | other
-  status           TEXT     discovered | cloned | analysed | skipped | error
+  num_contributors INTEGER  GitHub API: repository contributor count
   collected_at     TEXT     ISO 8601 timestamp of DB insertion
 
 TABLE: test_files
@@ -134,7 +133,13 @@ def export_dataset(version: str = "1.0", include_raw_source: bool = False) -> Pa
     logger.info(f"Copied database → {dest_db}")
 
     # --- CSV exports ---
-    _export_table(conn, "repositories", staging / "repositories.csv")
+    # repositories: exclude internal tracking fields (star_tier, status, domain, error_message)
+    _export_table(
+        conn,
+        "repositories",
+        staging / "repositories.csv",
+        exclude_cols=["star_tier", "status", "domain", "error_message", "skip_reason"],
+    )
     _export_table(conn, "test_files", staging / "test_files.csv")
     # mock_usages: exclude classification fields (subjective) and raw_snippet (redundant with GitHub URL)
     _export_table(

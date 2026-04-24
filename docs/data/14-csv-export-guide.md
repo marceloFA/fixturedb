@@ -57,13 +57,6 @@ One row per repository discovered during GitHub search.
 | `pushed_at` | TEXT | ISO 8601 last push date |
 | `clone_url` | TEXT | HTTPS clone URL used for local cloning |
 | `pinned_commit` | TEXT | SHA of HEAD commit at analysis time (for reproducibility) |
-| `domain` | TEXT | Inferred domain (web, cli, data, infra, library, other) |
-| `star_tier` | TEXT | Classification (core: ≥500 stars; extended: 100-499 stars) |
-| `status` | TEXT | Collection status (discovered, cloned, analysed, skipped, error) |
-| `error_message` | TEXT | Error details if status is 'error' |
-| `num_test_files` | INT | Count of test files found in repo |
-| `num_fixtures` | INT | Count of fixture definitions found |
-| `num_mock_usages` | INT | Count of mock usages detected |
 | `num_contributors` | INT | GitHub contributor count (Phase 3 metric) |
 | `collected_at` | TEXT | ISO 8601 timestamp of DB insertion |
 
@@ -164,58 +157,6 @@ github_id,full_name,pinned_commit,stars,forks,num_contributors,test_file_path,gi
 101,pytest-dev/pytest,abc123def456,7850,1200,150,src/pytest/test_config.py,https://github.com/pytest-dev/pytest/blob/abc123def456/src/pytest/test_config.py#L45,1,setup_test_db,pytest_decorator,per_test,45,62,18,2,3,2,5,3,2,1,pytest,2,1
 ```
 
-## Usage Examples
-
-### Load in Python
-
-```python
-import pandas as pd
-
-# Load language-specific fixtures
-df_python = pd.read_csv("fixtures_python.csv")
-
-# Find fixtures with the most mocks
-high_mock_fixtures = df_python[df_python['num_mocks'] > 5].sort_values('num_mocks', ascending=False)
-print(high_mock_fixtures[['full_name', 'fixture_name', 'num_mocks']])
-
-# Compare complexity metrics by scope
-complexity_by_scope = df_python.groupby('scope')[['cyclomatic_complexity', 'cognitive_complexity']].mean()
-print(complexity_by_scope)
-
-# Find repositories with most fixtures
-repos_by_fixture_count = df_python.groupby('full_name').size().sort_values(ascending=False).head(10)
-print(repos_by_fixture_count)
-```
-
-### Join with repositories metadata
-
-```python
-# Load multiple datasets
-repos = pd.read_csv("repositories.csv")
-fixtures_py = pd.read_csv("fixtures_python.csv")
-
-# Join to get additional repo info
-merged = fixtures_py.merge(
-    repos[['github_id', 'created_at', 'pushed_at']],
-    on='github_id'
-)
-
-# Analyze fixture count vs repo age
-print(merged.groupby('created_at')['fixture_id'].count())
-```
-
-### Analyze mock frameworks
-
-```python
-mock_usage = pd.read_csv("mock_usages.csv")
-
-# Most common mock frameworks
-print(mock_usage['framework'].value_counts())
-
-# Average interactions per framework
-print(mock_usage.groupby('framework')['num_interactions_configured'].mean())
-```
-
 ## Design Rationale
 
 ### CSV Export Strategy
@@ -234,32 +175,9 @@ The public CSV exports contain **quantitative metrics only** for this dataset. T
 ### Design principles
 
 1. **Quantitative focus:** CSV exports contain only measurable, objective facts (LOC, counts, metrics)
-2. **Publication-ready:** No internal research infrastructure in the public dataset
-3. **Reproducible:** Full SQLite database available for verification of extraction decisions
-4. **Traceable:** github_url enables verification of any finding directly in source code
-5. **Archivable:** Zenodo deposit includes both SQLite (for transparency and future research) and CSV (for paper analysis)
-
-## File Sizes
-
-Typical sizes for ~1000 repositories (60-100 repos per language):
-
-| File | Size |
-|------|------|
-| fixturedb.sqlite | ~50–100 MB |
-| All CSVs combined | ~30–50 MB |
-| Compressed archive | ~5–10 MB |
-
-## Checking Data Integrity
-
-After export, verify completeness:
-
-```bash
-# Count rows in each CSV
-wc -l export/fixturedb_v1.0_<date>/*.csv
-
-# Spot-check GitHub URLs
-head -5 export/fixturedb_v1.0_<date>/fixtures_python.csv | cut -d',' -f7 | tail -n +2
-```
+2. **Reproducible:** Full SQLite database available for verification of extraction decisions
+3. **Traceable:** github_url enables verification of any finding directly in source code
+4. **Archivable:** Zenodo deposit includes both SQLite (for transparency and future research) and CSV (for paper analysis)
 
 ## See Also
 

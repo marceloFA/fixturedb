@@ -50,7 +50,13 @@ def temp_db_with_data():
         clone_url TEXT,
         pinned_commit TEXT,
         domain TEXT,
+        star_tier TEXT,
         status TEXT DEFAULT 'discovered',
+        error_message TEXT,
+        skip_reason TEXT,
+        num_test_files INTEGER DEFAULT 0,
+        num_fixtures INTEGER DEFAULT 0,
+        num_mock_usages INTEGER DEFAULT 0,
         collected_at TEXT,
         num_contributors INTEGER DEFAULT 0
     );
@@ -106,18 +112,18 @@ def temp_db_with_data():
     conn.execute("""
         INSERT INTO repositories 
         (github_id, full_name, language, stars, forks, description, topics, 
-         created_at, pushed_at, clone_url, pinned_commit, domain, status, collected_at, num_contributors)
+         created_at, pushed_at, clone_url, pinned_commit, domain, star_tier, status, error_message, skip_reason, collected_at, num_contributors)
         VALUES (100, 'owner/repo1', 'python', 500, 50, 'Test repo', '["testing"]',
                 '2020-01-01T00:00:00Z', '2024-01-01T00:00:00Z', 'https://example.com/repo1.git', 
-                'abc1234567890', 'library', 'analysed', '2024-01-02T00:00:00Z', 10)
+                'abc1234567890', 'library', 'core', 'analysed', NULL, NULL, '2024-01-02T00:00:00Z', 10)
     """)
     conn.execute("""
         INSERT INTO repositories 
         (github_id, full_name, language, stars, forks, description, topics, 
-         created_at, pushed_at, clone_url, pinned_commit, domain, status, collected_at, num_contributors)
+         created_at, pushed_at, clone_url, pinned_commit, domain, star_tier, status, error_message, skip_reason, collected_at, num_contributors)
         VALUES (101, 'owner/repo2', 'java', 300, 30, 'Another repo', '[]',
                 '2019-01-01T00:00:00Z', '2024-01-01T00:00:00Z', 'https://example.com/repo2.git',
-                'def5678901234', 'web', 'analysed', '2024-01-02T00:00:00Z', 5)
+                'def5678901234', 'web', 'extended', 'analysed', NULL, NULL, '2024-01-02T00:00:00Z', 5)
     """)
 
     # Test files
@@ -271,6 +277,39 @@ class TestExportTable:
             assert pd.api.types.is_numeric_dtype(df["forks"])
             assert df.iloc[0]["stars"] == 500
             assert df.iloc[1]["forks"] == 30
+
+    def test_repositories_export_excludes_internal_fields(self, temp_db_with_data):
+        """repositories export should exclude internal tracking fields (star_tier, status, domain, error_message, skip_reason)."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dest = Path(tmpdir) / "repositories.csv"
+            conn = sqlite3.connect(temp_db_with_data)
+
+            _export_table(
+                conn,
+                "repositories",
+                dest,
+                exclude_cols=["star_tier", "status", "domain", "error_message", "skip_reason"],
+            )
+            conn.close()
+
+            df = pd.read_csv(dest)
+            # Verify excluded columns are not present
+            assert "star_tier" not in df.columns
+            assert "status" not in df.columns
+            assert "domain" not in df.columns
+            assert "error_message" not in df.columns
+            assert "skip_reason" not in df.columns
+            
+            # Verify essential columns are present
+            assert "github_id" in df.columns
+            assert "full_name" in df.columns
+            assert "language" in df.columns
+            assert "stars" in df.columns
+            assert "forks" in df.columns
+            assert "clone_url" in df.columns
+            assert "pinned_commit" in df.columns
+            assert "num_contributors" in df.columns
+            assert len(df) == 2
 
 
 class TestMockUsagesExport:
