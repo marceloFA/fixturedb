@@ -13,8 +13,6 @@ The following columns exist in the SQLite database but are intentionally exclude
 | `fixtures` | `category` | TEXT | Internal fixture classification; excluded from public CSV exports |
 | `fixtures` | `fixture_type` | TEXT | Qualitative/categorical classification (detection pattern); excluded from CSV (quantitative only) |
 | `fixtures` | `has_teardown_pair` | INT | Qualitative cleanup indicator; internal analysis only |
-| `mock_usages` | `mock_style` | TEXT | Internal classification (stub, mock, spy, fake); excluded from CSV |
-| `mock_usages` | `target_layer` | TEXT | Internal classification (boundary, infrastructure, internal, framework); excluded from CSV |
 | `mock_usages` | `raw_snippet` | TEXT | Source code snippet; redundant with fixtures table and SQLite full-text search |
 
 Column names and rationale documented here to clarify schema discrepancies between SQLite and CSV exports.
@@ -52,7 +50,7 @@ One row per repository discovered during GitHub search.
 | `pushed_at` | TEXT | ISO 8601 last push date |
 | `clone_url` | TEXT | HTTPS clone URL used for local cloning |
 | `pinned_commit` | TEXT | SHA of HEAD commit at analysis time (for reproducibility) |
-| `num_contributors` | INT | GitHub contributor count (extraction phase metric) |
+| `num_contributors` | INT | GitHub contributor count |
 | `collected_at` | TEXT | ISO 8601 timestamp of DB insertion |
 
 ## 2. test_files.csv
@@ -88,11 +86,12 @@ One row per fixture definition found during extraction.
 | `loc` | INT | Non-blank lines of code |
 | `cyclomatic_complexity` | INT | McCabe complexity: 1 + number of branching statements |
 | `cognitive_complexity` | INT | Nesting-depth-weighted complexity (higher = harder to understand) |
-| `max_nesting_depth` | INT | Maximum block nesting level (extraction phase metric) |
+| `max_nesting_depth` | INT | Maximum block nesting level |
 | `num_objects_instantiated` | INT | Estimated constructor calls inside fixture |
 | `num_external_calls` | INT | Estimated I/O / external API calls (DB, HTTP, filesystem, env) |
 | `num_parameters` | INT | Number of function parameters |
-| `reuse_count` | INT | Number of test functions using this fixture (extraction phase metric) |
+| `reuse_count` | INT | Number of test functions using this fixture |
+| `num_mocks` | INT | Count of distinct mock usages within this fixture (0 if no mocks detected) |
 | `framework` | TEXT | Detected testing framework (pytest, unittest, junit, nunit, testify, etc.) |
 | `raw_source` | TEXT | Complete source code of the fixture (for reproducibility and verification) |
 
@@ -100,7 +99,7 @@ One row per fixture definition found during extraction.
 
 One row per mock call detected inside a fixture.
 
-**Excluded columns:** `mock_style`, `target_layer`, `raw_snippet` (see [Excluded Columns](#excluded-columns-database-only) table above)
+**Excluded columns:** `raw_snippet` (see [Excluded Columns](#excluded-columns-database-only) table above)
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -119,8 +118,6 @@ The public CSV exports contain **quantitative metrics only** for this dataset. T
 
 **Internal-only fields (excluded from CSV):**
 - `category` (fixture) — Internal fixture classification infrastructure; enables future taxonomy work
-- `mock_style` (mock usage) — Internal classification (stub/mock/spy/fake) for future analysis
-- `target_layer` (mock usage) — Internal classification (infrastructure layers) for future analysis
 
 **Source code (excluded from CSV):**
 - `raw_source` (fixture) — Full source text is bulky; available in SQLite for researchers who need it

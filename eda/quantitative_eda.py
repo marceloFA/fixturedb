@@ -35,7 +35,7 @@ from eda.quantitative.p03a_fixtures_per_repo import plot_fixtures_per_repo
 from eda.quantitative.p03b_fixture_scope import plot_fixture_scope
 from eda.quantitative.p04a_mock_adoption import plot_mock_adoption
 from eda.quantitative.p04b_framework_diversity import plot_framework_diversity
-from eda.quantitative.p04c_mock_styles import plot_mock_styles
+# NOTE: plot_mock_styles removed (mock_style column no longer exists in DB as of 2026-04-25)
 from eda.quantitative.p05a_nesting_depth import plot_nesting_depth
 from eda.quantitative.p05b_nesting_complexity_correlation import (
     plot_nesting_complexity_correlation,
@@ -105,7 +105,6 @@ def main():
         ("Fixture Scope", plot_fixture_scope),
         ("Mock Adoption", plot_mock_adoption),
         ("Framework Diversity", plot_framework_diversity),
-        ("Mock Styles", plot_mock_styles),
         ("Nesting Depth Distribution", plot_nesting_depth),
         ("Nesting Depth vs Complexity", plot_nesting_complexity_correlation),
         ("Fixture Reuse Distribution", plot_fixture_reuse_distribution),

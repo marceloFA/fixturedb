@@ -222,7 +222,7 @@ export/
 ## 5. Data Flow and Dependencies
 
 ```
-Extraction Phase:
+Database Population:
   _find_test_files(repo)
         ↓ (count)
     num_test_files
@@ -241,8 +241,8 @@ Extraction Phase:
    repositories.num_fixtures = ?
    repositories.num_mock_usages = ?
 
-Export Phase:
-   set_repo_analysed() ← populated by extraction
+CSV Export:
+   set_repo_analysed() ← populated by database
         ↓ (query with joins)
    _export_language_specific_fixtures()
         ↓ (aggregate in SQL) 
@@ -289,26 +289,6 @@ Tests verify:
 - Proper data mapping from database to CSV
 - Mock usage counts aggregated correctly
 
-## 8. Integration Timeline
-
-```
-Phase 1: Data Collection (RUNNING)
-└─ Populate repositories table (discovered → cloned → analysed)
-└─ Extract fixtures and mocks
-└─ Set num_test_files, num_fixtures, num_mock_usages for each repo
-
-Phase 2: Analysis (READY)
-└─ Query database with count conditions
-└─ Generate language-specific summaries
-└─ Identify patterns by fixture type, scope, complexity
-
-Phase 3: Export (READY)
-└─ python pipeline.py export --version 1.0
-└─ Generates analysis-ready CSVs per language
-└─ Produces zipmable artifact for Zenodo
-```
-
 ## See Also
 
-- [CRITERIA-TRACKING.md](CRITERIA-TRACKING.md) — Repository skip reasons and filtering analysis
-- [docs/15-language-specific-csv-export.md](../data/15-language-specific-csv-export.md) — CSV format documentation and pandas examples
+- [docs/data/15-language-specific-csv-export.md](../data/15-language-specific-csv-export.md) — CSV format documentation and pandas examples

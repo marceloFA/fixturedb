@@ -55,7 +55,7 @@ Fixture detection uses syntax-based patterns (decorators, annotations, named met
 
 ---
 
-## Extraction Phase Advanced Metrics Limitations (April 2026)
+## Advanced Metrics Limitations
 
 ### `reuse_count` — Under-estimation in Dynamic Tests
 

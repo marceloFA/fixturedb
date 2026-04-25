@@ -318,6 +318,6 @@ One row per test file analyzed. Use this to study test file characteristics and 
 ## Column Documentation
 
 For detailed descriptions of what each metric means and how it's calculated, see:
-- **[Fixture Detection Logic](../architecture/11-detection.md)** — How each metric is computed and which tools are used; includes extraction phase metrics (max_nesting_depth, reuse_count, has_teardown_pair, num_contributors)
-- **[Limitations and Threats to Validity](../reference/12-limitations.md)** — Known limitations of extraction phase metrics and mitigation strategies
+- **[Fixture Detection Logic](../architecture/11-detection.md)** — How each metric is computed and which tools are used; includes post-processing metrics (max_nesting_depth, reuse_count, has_teardown_pair, num_contributors)
+- **[Limitations and Threats to Validity](../reference/12-limitations.md)** — Known limitations of advanced metrics and mitigation strategies
 - **[CSV Export Guide](../data/14-csv-export-guide.md)** — Column-by-column definitions (consolidated reference)

@@ -60,7 +60,6 @@ This folder contains the complete documentation for FixtureDB, organized into se
 - [Reproducing Results](usage/08-reproducing.md)
 - [Using the Dataset for Research](usage/09-usage.md)
 - [Fixture Patterns Reference](usage/16-fixture-patterns-reference.md)
-- [Mock Classification Reference](usage/18-mock-classification-reference.md)
 
 ### Reference & Specs
 - [Limitations & Validity](reference/12-limitations.md)

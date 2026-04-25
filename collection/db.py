@@ -91,6 +91,7 @@ CREATE TABLE IF NOT EXISTS fixtures (
     raw_source              TEXT,              -- original source text
     category                TEXT,              -- RQ1 taxonomy label (filled by classifier)
     framework               TEXT,              -- testing framework (pytest, unittest, junit, nunit, testify, etc.)
+    num_mocks               INTEGER DEFAULT 0, -- count of distinct mock usages in this fixture
     UNIQUE(file_id, name, start_line)
 );
 
@@ -103,10 +104,7 @@ CREATE TABLE IF NOT EXISTS mock_usages (
     repo_id                     INTEGER NOT NULL REFERENCES repositories(id),
     framework                   TEXT,   -- unittest_mock/pytest_mock/mockito/
                                         -- easymock/jest/sinon/gomock/testify/...
-    mock_style                  TEXT,   -- stub/mock/spy/fake (filled by classifier)
     target_identifier           TEXT,   -- the string passed to mock (e.g. "mymodule.Client")
-    target_layer                TEXT,   -- boundary/infrastructure/internal/framework
-                                        -- (filled by classifier)
     num_interactions_configured INTEGER DEFAULT 0,
     raw_snippet                 TEXT    -- the mock call source text
 );

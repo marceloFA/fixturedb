@@ -123,10 +123,6 @@ class MockResult:
     target_identifier: str
     num_interactions_configured: int
     raw_snippet: str
-    mock_style: str = "stub"  # stub/mock/spy/fake (default: stub)
-    target_layer: str = (
-        "internal"  # boundary/infrastructure/internal/framework (default: internal)
-    )
 
 
 @dataclass
@@ -316,162 +312,15 @@ def _extract_mocks(node, src_bytes: bytes) -> list[MockResult]:
                 )
             )
 
-            # Extract phase: Classify mock_style and target_layer for detailed analysis
-            mock_style = _classify_mock_style(snippet, text, framework)
-            target_layer = _classify_target_layer(target, framework, snippet, text)
-
             found.append(
                 MockResult(
                     framework=framework,
                     target_identifier=target,
                     num_interactions_configured=interactions,
                     raw_snippet=snippet,
-                    mock_style=mock_style,
-                    target_layer=target_layer,
                 )
             )
     return found
-
-
-def _classify_mock_style(snippet: str, full_code: str, framework: str) -> str:
-    """
-    Classify mock object type (stub/mock/spy/fake).
-
-    Classification priority:
-    1. fake: Custom implementation classes with logic
-    2. spy: spy/wrap pattern with real object
-    3. mock: Verify/assert patterns
-    4. stub: Default (only return_value patterns)
-    """
-    # Check for custom class implementation (fake)
-    if re.search(r"class\s+\w+.*:", snippet):
-        return "fake"
-
-    # Check for spy patterns (spy/wrap patterns)
-    spy_patterns = [
-        r"spy\s*\(",  # Mockito: spy(object)
-        r"patch\.object\s*\(",  # unittest_mock: patch.object
-        r"spyOn\s*\(",  # Jest: spyOn
-        r"spy\(",  # Sinon: spy()
-        r"\.when\s*\(",  # Mockito spy: when( on spy
-    ]
-    if any(re.search(p, snippet) for p in spy_patterns):
-        return "spy"
-
-    # Check for mock verify/assert patterns (mock)
-    verify_patterns = [
-        r"\.verify\s*\(",  # Mockito: verify(mock)
-        r"assert_called",  # unittest_mock: assert_called_*
-        r"\.toHaveBeenCalled",  # Jest: toHaveBeenCalled
-        r"calledWith\s*\(",  # Sinon: calledWith
-        r"was_called_with",  # Mockito syntax variant
-        r"\.verify\(",  # Mockito verify call
-    ]
-    if any(re.search(p, full_code) for p in verify_patterns):
-        return "mock"
-
-    # Default: stub (only return_value configured)
-    return "stub"
-
-
-def _classify_target_layer(
-    target_id: str, framework: str, snippet: str, full_code: str
-) -> str:
-    """
-    Classify mocked target by architectural layer.
-
-    Classification priority:
-    1. framework: Testing/DI framework components
-    2. boundary: External services and APIs
-    3. infrastructure: Persistence, caching, logging
-    4. internal: Application domain classes
-    """
-    target_lower = target_id.lower()
-    snippet_lower = snippet.lower()
-    full_lower = full_code.lower()
-
-    # Priority 1: Framework layer
-    framework_keywords = [
-        "pytest",
-        "unittest",
-        "junit",
-        "spring",
-        "django",
-        "fastapi",
-        "request",
-        "response",
-        "session",
-        "engine",
-        "httpresponse",
-        "servletrequest",
-        "httpservletresponse",
-        "mockmvc",
-        "dependency",
-        "inject",
-        "container",
-        "bean",
-    ]
-    if any(kw in target_lower for kw in framework_keywords):
-        return "framework"
-
-    # Priority 2: Boundary (external services)
-    boundary_keywords = [
-        "requests",
-        "urllib",
-        "httplib",
-        "axios",
-        "fetch",
-        "stripe",
-        "paypal",
-        "aws",
-        "azure",
-        "gcp",
-        "gmail",
-        "email",
-        "twilio",
-        "sendgrid",
-        "github",
-        "gitlab",
-        "apikey",
-        "api_",
-        "oauth",
-        "auth",
-        "service",
-        "client",
-        "sdk",
-    ]
-    if any(kw in target_lower for kw in boundary_keywords):
-        return "boundary"
-
-    # Priority 3: Infrastructure (persistence/storage)
-    infrastructure_keywords = [
-        "database",
-        "db",
-        "cache",
-        "redis",
-        "mongo",
-        "sql",
-        "postgres",
-        "repository",
-        "dao",
-        "store",
-        "logger",
-        "log",
-        "file",
-        "filesystem",
-        "path",
-        "queue",
-        "kafka",
-        "rabbitmq",
-        "bucket",
-        "storage",
-        "stream",
-    ]
-    if any(kw in target_lower for kw in infrastructure_keywords):
-        return "infrastructure"
-
-    # Default: Internal (application domain)
-    return "internal"
 
 
 def is_mock_framework_available(

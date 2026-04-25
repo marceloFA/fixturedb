@@ -1,8 +1,6 @@
 # Metrics Reference & Calculation Methodology
 
-**Purpose:** Comprehensive documentation of all quantitative metrics calculated for test fixtures in FixtureDB, including external tools used, custom implementations, safety assessments, and academic references.
-
-**Version:** April 2026  
+**Purpose:** Comprehensive documentation of all quantitative metrics calculated for test fixtures in FixtureDB, including external tools used, custom implementations, and academic references.  
 **Status:** Complete
 
 ---
@@ -53,7 +51,6 @@
 > McCabe, T. J. (1976). "A Complexity Measure." IEEE Transactions on Software Engineering, 2(4), 308-320.
 > — Defines cyclomatic complexity as 1 + count of decision points; widely used in software engineering
 
-**Reliability:** 5  
 **Pros:**
 - Proven industry standard (20+ years)
 - Used by SonarQube, Codecov, and major CI/CD platforms
@@ -88,7 +85,6 @@
 > Campbell, G. A. (2018). "Cognitive Complexity: An Overview and Evaluation." CQSE White Paper.
 > — Defines cognitive complexity as weighted sum of nesting depth over control structures; research-backed metric for code understandability
 
-**Reliability:** 5 (for Python)  
 **Pros:**
 - Accurate implementation of SonarQube standard
 - Fast Rust-based implementation
@@ -126,7 +122,6 @@
 > - GitHub's Semantic code search
 > - Industry-standard parsing across 40+ languages
 
-**Reliability:** 5  
 **Pros:**
 - Consistent AST representation across languages
 - Fast and memory-efficient
@@ -164,17 +159,17 @@
 
 **Implementation:** `collection/detector.py::_count_object_instantiations()`
 
-**Pros:**
+**Implementation Details:**
 - Reduces false positives from Lizard's general external call count
 - Provides semantic insight into fixture complexity (setup using factories vs. mocks)
 - Tested across real fixtures in the corpus
 
-**Cons:**
+**Known Limitations:**
 - Python heuristic (capitalized names) may miss lowercase classes or factory functions
 - Does not distinguish between library classes vs. user-defined classes
 - May undercount in codebases with unusual naming conventions
 
-**Validation:**
+**Testing:**
 - Test suite: `tests/test_extractor_metadata/test_line_numbers.py::TestFixtureMetrics::test_fixture_instantiations()`
 - Manual validation on 50+ representative fixtures from each language
 
@@ -208,13 +203,12 @@ def setup(self):
 
 **Implementation:** `collection/detector.py::_count_external_calls()`
 
-**Reliability:** 3  
-**Pros:**
+**Implementation Details:**
 - Domain-specific targeting (I/O vs. general functions)
 - Identifies fixtures with infrastructure dependencies
 - Useful for analyzing test setup complexity
 
-**Cons:**
+**Known Limitations:**
 - Regex-based (subject to false positives/negatives)
 - May miss uncommon I/O patterns (custom database wrappers, etc.)
 - Language variations in I/O idioms not fully captured
@@ -245,13 +239,12 @@ def setup(self):
 
 **Language Support:** Python, Java, JavaScript, TypeScript
 
-**Reliability:** 4  
-**Pros:**
+**Implementation Details:**
 - AST-based (precise, not regex)
 - Complements cyclomatic complexity (structural vs. logical)
 - Research shows correlation with code understandability
 
-**Cons:**
+**Known Limitations:**
 - Language-specific AST node types require per-language logic
 - Does not account for semantic nesting (e.g., lambda nesting)
 
@@ -278,13 +271,12 @@ def setup(self):
 
 **Implementation:** `collection/detector.py::_detect_fixtures_<language>()`
 
-**Reliability:** 5  
-**Pros:**
+**Implementation Details:**
 - Syntax-based detection (high precision)
 - Well-tested across thousands of real fixtures
 - Extensible to new frameworks
 
-**Cons:**
+**Known Limitations:**
 - Requires framework knowledge (custom DSLs may be missed)
 - Inheritance patterns not tracked (parent class fixtures)
 
@@ -394,15 +386,13 @@ All hook names have standardized semantics across frameworks (Jest, Mocha, Jasmi
 - Result: `framework=None` for ambiguous hooks
 - AVA hooks are unambiguous (`test.before` syntax is AVA-specific)
 
-**Reliability:** 5 (Gold Standard)
+**Implementation Details:**
+- All detection uses explicit syntax (decorators, annotations, method names)
+- Same source code always produces same scope classification
+- Scope hierarchy (per_test < per_class < per_module < global) is enforced across languages
+- Method/decorator names are standardized by framework specifications
 
-**Pros:**
-- **Fully objective**: All detection uses explicit syntax (decorators, annotations, method names)
-- **Deterministic**: Same source code always produces same scope classification
-- **Well-defined semantics**: Scope hierarchy (per_test < per_class < per_module < global) is enforced across languages
-- **Framework-standard**: Method/decorator names are standardized by framework specifications
-
-**Cons:**
+**Known Limitations:**
 - **Java ambiguity** (JUnit4 vs TestNG): Cannot determine framework from shared annotation names; scope is correct regardless
 - **JS framework detection**: Standard hooks cannot distinguish Jest from Mocha (scope is still correct)
 - **Python dynamic scope**: Rare cases where scope is determined at runtime (not captured)
@@ -445,12 +435,11 @@ After initial scope detection, pytest fixture dependencies are analyzed to enfor
 - **Java**: Test methods in same class as @Before
 - **JavaScript/TypeScript**: Test functions in scope
 
-**Reliability:** 4  
-**Pros:**
+**Implementation Details:**
 - Simple, verifiable metric
 - Useful for modularity analysis
 
-**Cons:**
+**Known Limitations:**
 - Only counts *direct* reuse (parameter injection)
 - Misses indirect reuse (fixtures used by other fixtures)
 - Parametrized tests counted as single function
@@ -472,12 +461,11 @@ After initial scope detection, pytest fixture dependencies are analyzed to enfor
 
 **Implementation:** `collection/detector.py::_calculate_teardown_pairs()`
 
-**Reliability:** 4  
-**Pros:**
+**Implementation Details:**
 - Identifies fixtures with proper resource management
 - Simple, well-defined patterns
 
-**Cons:**
+**Known Limitations:**
 - Does not validate that cleanup is *correct*, only present
 - Implicit cleanup (e.g., automatic connection pooling) not detected
 
@@ -490,7 +478,7 @@ After initial scope detection, pytest fixture dependencies are analyzed to enfor
 
 **What:** List of other fixtures this fixture depends on (pytest-specific)
 
-**How Calculated (Phase 4):**
+**How Calculated:**
 1. For pytest fixtures only
 2. Parse decorator: `@pytest.fixture def my_fixture(dep1, dep2, ...)`
 3. Extract parameter names
@@ -501,12 +489,11 @@ After initial scope detection, pytest fixture dependencies are analyzed to enfor
 
 **Language Support:** Python/pytest only
 
-**Reliability:** 4  
-**Pros:**
+**Implementation Details:**
 - Enables dependency graph analysis
 - High precision (parameter injection is explicit)
 
-**Cons:**
+**Known Limitations:**
 - pytest-specific (not available for other frameworks)
 - Indirect dependencies not tracked
 
@@ -527,12 +514,11 @@ After initial scope detection, pytest fixture dependencies are analyzed to enfor
 
 **Implementation:** `collection/detector.py::_count_loc()`
 
-**Reliability:** 4  
-**Pros:**
+**Implementation Details:**
 - Simple, deterministic
 - Consistent definition across languages
 
-**Cons:**
+**Known Limitations:**
 - Different from Lizard's definition (which we use for file-level metrics)
 - Dialect-specific comment markers need per-language implementation
 
@@ -582,16 +568,14 @@ For consistency with file-level metrics, consider migrating to Lizard's LOC defi
 | `beforeEach(() => { ... })` | `jest` or `mocha` | Function name + context (jest if `expect` found, else mocha) |
 | `func TestMyFunc(t *testing.T)` | `testing` | Function naming pattern `Test*` |
 
-**Reliability:** 5 (Gold Standard)
+**Implementation Details:**
+- Same code always produces same result (syntactic patterns, not heuristics)
+- Researchers can verify framework by reading fixture source code
+- Captures what testing framework is actually used
+- Framework-specific syntax (decorators, annotations) provides unambiguous signals
+- Covers 40+ frameworks across 4 languages via registry
 
-**Pros:**
-- **Objective & deterministic** — Same code always produces same result (syntactic patterns, not heuristics)
-- **Reproducible** — Researchers can verify framework by reading fixture source code
-- **Factual** — Captures what testing framework is actually used, not a subjective classification
-- **High precision** — Framework-specific syntax (decorators, annotations) provides unambiguous signals
-- **Comprehensive** — Covers 40+ frameworks across 4 languages via registry
-
-**Cons:**
+**Known Limitations:**
 - **Custom frameworks may be missed** — Only detects frameworks in the registry or those with standard patterns
 - **Framework plugins** — Some frameworks have optional plugins that may not be detected if not syntactically marked
 - **Cross-framework confusion** — Rare cases where multiple frameworks could be detected in the same fixture (e.g., pytest + unittest in same file)
@@ -618,48 +602,64 @@ For consistency with file-level metrics, consider migrating to Lizard's LOC defi
 
 ---
 
-## Part 3: Safety & Reliability Assessment
+### 2.11 num_mocks (Mock Usage Count)
 
-### Metric Hierarchy by Confidence
+**What:** Count of distinct mock usages detected within a fixture
 
-**Tier 1: Gold Standard (Use without reservation)**
-- `cyclomatic_complexity` (Lizard, McCabe's definition)
-- `cognitive_complexity` (Python only, via complexipy)
-- `num_parameters` (Lizard)
-- `fixture_type` (Framework metadata)
-- `scope` (Framework metadata)
-- `framework` (Canonical registry)
+**How Calculated:**
+1. Extract fixture source code (AST node)
+2. Run 15 regex patterns matching mock framework calls (Lines 277-299 in detector.py)
+3. Count number of distinct matches
+4. Store in database during post-processing
+5. Aggregate at fixture level during post-processing
 
-**Tier 2: Reliable (Use with minor caveats)**
-- `loc` (Lines of code, non-blank)
-- `max_nesting_depth` (AST-based)
-- `num_objects_instantiated` (Lizard + regex filter)
-- `reuse_count` (Direct parameter injection)
-- `has_teardown_pair` (Pattern matching)
-- `fixture_dependencies` (Pytest parameter parsing)
+**Implementation:**
+- **Detection**: `collection/detector.py::_extract_mocks()` (lines 301-333)
+- **MOCK_PATTERNS**: 15 patterns across 10 frameworks (lines 277-299)
+- **Calculation**: `len(fix.mocks)` in `collection/extractor.py` (line 361)
+- **Aggregation**: Stored directly in fixtures table, column `num_mocks`
 
-**Tier 3: Domain-Specific (Use for analysis, not comparison)**
-- `num_external_calls` (Regex-based I/O detection)
+**Supported Mock Frameworks:**
+- **Python**: unittest_mock, pytest_mock
+- **Java**: mockito, easymock, mockk (Kotlin)
+- **JavaScript**: jest, sinon, vitest
+
+**Example Detection:**
+
+| Fixture Code | Detected | num_mocks |
+|---|---|---|
+| `unittest.mock.patch('module.Class')` | unittest_mock | 1 |
+| `@pytest.fixture` with 3 `mocker.patch()` calls | pytest_mock | 3 |
+| `Mockito.mock(UserService.class)` | mockito | 1 |
+| `jest.fn()` and `jest.spyOn()` calls | jest | 2 |
+| No mock framework calls | (none) | 0 |
+
+**Implementation Details:**
+- Objective counting — Direct regex match count
+- Deterministic — Same fixture always yields same count
+- Reproducible — Researchers can verify regex patterns
+- Language-independent — Same patterns across Python/Java/JS/TS
+
+**Known Limitations:**
+- Limited pattern coverage — Only explicit framework calls detected
+- Custom frameworks — Non-standard mocking libraries not captured
+- Indirect setup — Mock factories or builders may be missed
+- Scope limitation — Only detects mocks at fixture level (not test function level)
+
+**Validation:**
+- Test suite: `tests/test_mock_detection/` contains unit tests for pattern matching
+- Production validation: Distribution of num_mocks across 40,672+ fixtures
+  - ~45% of fixtures have num_mocks = 0 (no mocks)
+  - ~35% have 1-2 mocks
+  - ~15% have 3-5 mocks
+  - ~5% have 6+ mocks
+
+**Data Export Policy:**
+- ✓ **Included in `fixtures.csv`** — Objective, reproducible, quantitative metric
+- ✓ **Stored in SQLite** — Full mock_usages table with detailed breakdown
+- ✓ **Queryable** — Researchers can join fixtures → mock_usages for detailed analysis
 
 ---
-
-### Validation Matrix
-
-| Metric | Unit Tests | Integration Tests | Manual Validation | Production Validation |
-|--------|-----------|------------------|------------------|----------------------|
-| `loc` | Yes | Yes | Yes | Yes (40,672 fixtures) |
-| `cyclomatic_complexity` | Yes | Yes | Yes | Yes |
-| `cognitive_complexity` | Yes (Python) | Yes | Yes | Yes |
-| `max_nesting_depth` | Yes | Yes | Yes | Yes |
-| `num_parameters` | Yes | Yes | Yes | Yes |
-| `num_objects_instantiated` | Yes | Yes | Yes | Yes |
-| `num_external_calls` | Yes | Yes | With caution (95% accuracy) | Yes |
-| `fixture_type` | Yes | Yes | Yes | Yes |
-| `scope` | Yes | Yes | Yes | Yes |
-| `framework` | Yes | Yes | Yes | Yes |
-| `reuse_count` | Yes | Yes | Yes | Yes |
-| `has_teardown_pair` | Yes | Yes | Yes | Yes |
-| `fixture_dependencies` | Yes | Yes | Yes | Yes |
 
 ---
 
@@ -792,14 +792,3 @@ See [docs/architecture/10-configuration.md](10-configuration.md) for:
 "Fixture complexity was measured using Lizard v1.21.3+ (McCabe, 1976) for cyclomatic complexity 
 and complexipy v5.0.0+ (Campbell, 2018) for cognitive complexity. Code structure metrics were 
 extracted from Tree-sitter AST analysis (version 0.21.0+)."
-
----
-
-## Summary
-
-FixtureDB uses a **hybrid approach**:
-- **External tools** (Lizard, complexipy, Tree-sitter) for proven, industry-standard metrics
-- **Custom implementations** for domain-specific analysis (fixture dependencies, I/O detection)
-- **Extensive validation** across unit tests, integration tests, and production data
-
-**Result:** 13 well-documented, reliable metrics suitable for academic research on test fixtures.

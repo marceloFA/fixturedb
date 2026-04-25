@@ -3,7 +3,7 @@
 **Document Purpose:** Comprehensive catalog of all fixture types detected across all supported languages and frameworks. Provides examples, patterns, and classification criteria for fixture detection in the FixtureDB.
 
 **Status:** Complete reference with BDD and Spring enhancements  
-**Last Updated:** April 2026  
+
 **Languages:** Python, Java, JavaScript, TypeScript, C#
 
 ---

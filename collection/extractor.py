@@ -357,6 +357,7 @@ def extract_repo(repo_id: int, full_name: str, language: str) -> dict:
                     "reuse_count": fix.reuse_count,
                     "has_teardown_pair": fix.has_teardown_pair,
                     "raw_source": fix.raw_source,
+                    "num_mocks": len(fix.mocks),
                 }
                 fixture_id = insert_fixture(conn, fixture_record)
 

@@ -101,9 +101,7 @@ TABLE: mock_usages
                                         easymock | jest | sinon | vitest |
                                         gomock | testify_mock | moq |
                                         nsubstitute | fakeiteasy | rhino_mocks
-  mock_style                   TEXT     stub | mock | spy | fake (internal; excluded from CSV export)
   target_identifier            TEXT     String passed to the mock call
-  target_layer                 TEXT     boundary | infrastructure | internal | framework (internal; excluded from CSV export)
   num_interactions_configured  INTEGER  return_value / thenReturn calls counted
   raw_snippet                  TEXT     Short source snippet (excluded from CSV export — GitHub URL provides access)
 """
@@ -147,7 +145,7 @@ def export_dataset(version: str = "1.0", include_raw_source: bool = False) -> Pa
         conn,
         "mock_usages",
         staging / "mock_usages.csv",
-        exclude_cols=["mock_style", "target_layer", "raw_snippet"],
+        exclude_cols=["raw_snippet"],
     )
 
     # fixtures: exclude category, has_teardown_pair, and fixture_type by default

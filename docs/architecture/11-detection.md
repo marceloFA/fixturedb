@@ -150,7 +150,7 @@ For each detected fixture, the system computes the following quantitative metric
 - **Rationale**: Lizard's external_call_count measures *function calls* (architecture metric), not *I/O operations* (dependency metric)
 - **Accuracy**: Regex-based detection provides precision for analyzing fixture external dependencies
 
-**Max Nesting Depth** (extraction phase)
+**Max Nesting Depth**
 - **Tool**: Tree-sitter AST traversal (custom)
 - **Language Support**: Python, Java, JavaScript, TypeScript
 - **Definition**: Maximum level of nested block structures (if/for/while/try statements)
@@ -198,11 +198,11 @@ For detailed fixture patterns, examples, and framework reference:
 
 ---
 
-## Post-Processing & Relationship Detection (extraction phase, April 2026)
+## Post-Processing & Relationship Detection
 
-After initial AST-based detection, fixtures undergo post-processing to calculate file-wide context metrics and detect fixture relationships. These metrics were added in the **extraction phase** to support advanced research questions:
+After initial AST-based detection, fixtures undergo post-processing to calculate file-wide context metrics and detect fixture relationships:
 
-### Fixture Reuse Count (extraction phase)
+### Fixture Reuse Count
 
 - **Tool**: AST analysis (custom)
 - **Definition**: Number of test functions that use this fixture as a parameter
@@ -214,7 +214,7 @@ After initial AST-based detection, fixtures undergo post-processing to calculate
 - **Utility**: Fixture modularity metric; complex fixtures used by many tests have system-wide impact
 - **CSV Export**: Included (quantitative metric)
 
-### Teardown Pairing (extraction phase)
+### Teardown Pairing
 
 - **Tool**: AST pattern matching (custom)
 - **Definition**: Binary indicator (0/1) whether fixture has cleanup logic paired with setup
@@ -226,7 +226,7 @@ After initial AST-based detection, fixtures undergo post-processing to calculate
 - **Utility**: Indicator of resource cleanup discipline; fixtures without teardown are potential leak indicators
 - **CSV Export**: Excluded (qualitative indicator, internal analysis only)
 
-### Repository Contributor Count (extraction phase)
+### Repository Contributor Count
 
 - **Tool**: GitHub REST API v2022-11-28
 - **Definition**: Number of unique contributors to the GitHub repository
@@ -261,7 +261,7 @@ After initial AST-based detection, fixtures undergo post-processing to calculate
 - **Utility**: Enables fixture dependency graph analysis, modularity analysis, scope constraint validation
 - **Language Scope**: Currently implemented for **Python/pytest only** (other frameworks don't have explicit dependency syntax)
 
-### Fixture Scope Propagation (Phase 4)
+### Fixture Scope Propagation
 
 - **Tool**: Constraint satisfaction (custom graph algorithm)
 - **Definition**: Propagates scope constraints based on fixture dependencies to ensure valid configurations
@@ -292,13 +292,13 @@ The fixture post-processing pipeline executes in this order (see `extract_fixtur
 1. **Initial detection**: AST-based fixture identification per language
 2. **Mock detection**: Regex patterns for mock framework usage
 3. **Reuse counting**: Count test functions using each fixture
-4. **Fixture dependency detection** ← Phase 4
-5. **Scope propagation** ← Phase 4
+4. **Fixture dependency detection**
+5. **Scope propagation**
 6. **Teardown pairing**: Detect setup/cleanup pairs
 
 ---
 
-## File-Level Metrics (extraction phase)
+## File-Level Metrics
 
 In addition to fixture-level metrics, the system collects file-level aggregates:
 
@@ -308,7 +308,7 @@ In addition to fixture-level metrics, the system collects file-level aggregates:
 - **Language Support**: Python, Java, JavaScript, TypeScript, Go
 - **Definition**: Total lines of code in file
 - **Implementation**: `complexity_provider.get_file_loc()` extracts `file_measure.total_lines` from Lizard analysis
-- **Phase**: extraction phase (migrated from manual line counting)
+- **Basis**: Reuses already-parsed file data from complexity analysis; consistent with fixture-level metrics approach
 - **Benefit**: Reuses already-parsed file data from complexity analysis; consistent with fixture-level metrics approach
 
 ### Number of Test Functions (num_test_funcs)
@@ -317,7 +317,7 @@ In addition to fixture-level metrics, the system collects file-level aggregates:
 - **Language Support**: Python, Java, JavaScript, TypeScript, Go
 - **Definition**: Count of all functions/methods in file
 - **Implementation**: `complexity_provider.get_file_function_count()` returns `len(lizard_result.function_list)`
-- **Phase**: extraction phase (migrated from AST-based counting per language)
+- **Basis**: Migrated from AST-based counting per language
 - **Accuracy Note**: Counts all functions (including helpers), not just test functions; on test files this distinction is minimal
 - **Benefit**: Consistency with fixture-level metrics; leverages proven Lizard infrastructure
 
@@ -347,10 +347,10 @@ This section provides the complete audit of which metrics use external tools vs.
 | `max_nesting_depth` | Code Property | Tree-sitter AST | P1 | Fixture | Structual nesting independent of complexity |
 | `reuse_count` | Usage | Custom AST | P1 | Fixture | Post-processing metric; requires file-wide fixture context |
 | `has_teardown_pair` | Pattern | Custom AST + regex | P1 | Fixture | Framework-specific cleanup patterns |
-| `fixture_dependencies` | Relationships | Custom regex | P4 | Fixture | pytest-specific parameter injection (post-extraction phase) |
+| `fixture_dependencies` | Relationships | Custom regex | P4 | Fixture | pytest-specific parameter injection (post-processing) |
 | `raw_source` | Data | N/A | P1 | Fixture | Text extraction for reproducibility |
 
-### External Tools Migrations (Phase 1-2)
+### External Tools Migrations
 
 **5 metrics completed migration to industry-standard tools:**
 
@@ -480,7 +480,7 @@ tempfile.NamedTemporaryFile()  # Temp file creation
 
 ---
 
-## Framework & Mock Framework Validation (Phase 4)
+## Framework & Mock Framework Validation
 
 ### FRAMEWORK_REGISTRY (44+ Frameworks)
 
@@ -585,7 +585,7 @@ This section provides direct links to the official homepages and documentation f
 
 ---
 
-### Mock Framework Dependency Validation (Phase 4)
+### Mock Framework Dependency Validation
 
 **Function**: `is_mock_framework_available(framework, language, repo_path)`
 
