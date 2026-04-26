@@ -272,8 +272,6 @@ def setUp(self):
                 target_identifier="user_service",
                 num_interactions_configured=3,
                 raw_snippet="mock_user_service = Mock()",
-                mock_style="mock",
-                target_layer="internal",
             )
             
             mock_fixture = FixtureResult(

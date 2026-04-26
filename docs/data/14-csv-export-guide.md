@@ -87,8 +87,8 @@ One row per fixture definition found during extraction.
 | `cyclomatic_complexity` | INT | McCabe complexity: 1 + number of branching statements |
 | `cognitive_complexity` | INT | Nesting-depth-weighted complexity (higher = harder to understand) |
 | `max_nesting_depth` | INT | Maximum block nesting level |
-| `num_objects_instantiated` | INT | Estimated constructor calls inside fixture |
-| `num_external_calls` | INT | Estimated I/O / external API calls (DB, HTTP, filesystem, env) |
+| `num_objects_instantiated` | INT | Estimated constructor calls inside fixture (detected via regex; see limitations) |
+| `num_external_calls` | INT | Estimated I/O / external API calls (DB, HTTP, filesystem, env); see limitations for accuracy notes |
 | `num_parameters` | INT | Number of function parameters |
 | `reuse_count` | INT | Number of test functions using this fixture |
 | `num_mocks` | INT | Count of distinct mock usages within this fixture (0 if no mocks detected) |

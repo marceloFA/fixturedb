@@ -108,14 +108,15 @@ For each detected fixture, the system computes the following quantitative metric
 
 **Cognitive Complexity**
 - **Python**: Calculated via [complexipy library](https://github.com/rohaquinlop/complexipy) v5.0.0+ (fast Rust-based implementation of SonarQube cognitive complexity)
-  - Metric: Nesting-depth-weighted complexity (higher nesting increases cost)
+  - Metric: SonarQube nesting-aware complexity (higher = harder to understand)
   - Formula: Σ(nesting_depth) over all control structures, following SonarQube's G. Ann Campbell research
   - Example: Three nested if-statements at depths 1, 2, 3 contribute 1+2+3=6 to cognitive complexity (vs. cyclomatic complexity of 3)
   
-- **Other languages** (Java, JavaScript, TypeScript): Formula-based fallback
-  - Formula: Cognitive Complexity = cyclomatic_complexity × average_nesting_depth
+- **Other languages** (Java, JavaScript, TypeScript): Formula-based approximation
+  - Formula: Cognitive Complexity ≈ cyclomatic_complexity × average_nesting_depth
   - Rationale: Nested code is harder to understand than flat code; nesting depth better reflects human cognitive burden
-  - Accuracy: Reasonable estimate when official Python implementation unavailable
+  - **Limitation**: Not validated against official SonarQube implementation for Java/JavaScript/TypeScript; treated as approximation for scaling
+  - **Recommendation**: See limitations section for reliability notes; prefer cyclomatic_complexity for non-Python languages if absolute accuracy is critical
 
 ### Code Structure Metrics
 
@@ -181,8 +182,6 @@ Mock usage is detected as a separate pass after fixture extraction using 40+ reg
 
 For each mock framework detected, the fixture records:
 - **framework**: Name of mock framework (e.g., `mockito`, `unittest_mock`, `sinon`)
-- **mock_style**: Classification of mock usage (stub/mock/spy/fake)
-- **target_layer**: What is being mocked (boundary/infra/internal)
 - **num_interactions_configured**: Count of `.verify()`, `.thenReturn()`, or similar assertion calls
 - **raw_snippet**: Code snippet for manual inspection and validation
 
@@ -339,8 +338,8 @@ This section provides the complete audit of which metrics use external tools vs.
 | `cyclomatic_complexity` | Code Property | Lizard v1.21.3+ | P1 | Fixture | McCabe's standard; widely recognized metric |
 | `cognitive_complexity` | Code Property | Lizard + complexipy v5.0.0+ | P1 | Fixture | SonarQube standard; Python-native, fallback formula for others |
 | `num_parameters` | Syntax | Lizard v1.21.3+ | P2 | Fixture | Direct extraction from Lizard's parameter_count |
-| `num_objects_instantiated` | Semantic | Lizard v1.21.3+ (post-processed) | P2 | Fixture | Filters Lizard's external_call_count for constructor patterns |
-| `num_external_calls` | Semantic | Custom regex | P2 | Fixture | Domain-specific I/O detection (not general function calls) |
+| `num_objects_instantiated` | Semantic | Custom regex (Lizard-informed) | P2 | Fixture | Detects `new ClassName(...)` patterns; Python uses capitalized-name heuristic (see limitations) |
+| `num_external_calls` | Semantic | Custom regex | P2 | Fixture | Domain-specific I/O detection via patterns (database, HTTP, file, subprocess); see limitations for accuracy |
 | `fixture_type` | Classification | Custom AST + regex | P1 | Fixture | Domain-specific framework patterns; no generalizable tool |
 | `scope` | Classification | Tree-sitter (AST) | P1 | Fixture | Built-in; custom scope rules per language |
 | `framework` | Classification | FRAMEWORK_REGISTRY + regex | P2 | Fixture | Standardized registry of 44+ frameworks; extensible design |

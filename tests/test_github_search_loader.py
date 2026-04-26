@@ -37,7 +37,6 @@ class TestParseSearrGhsRepo:
         assert result["stars"] == 100
         assert result["forks"] == 5
         assert result["clone_url"] == "https://github.com/owner/repo.git"
-        assert result["star_tier"] in ["core", "extended"]  # depends on star count
         assert "topics" in result
 
     def test_parse_repo_missing_optional_fields(self):
@@ -58,7 +57,7 @@ class TestParseSearrGhsRepo:
         assert result["clone_url"] == "https://github.com/test/empty.git"
 
     def test_parse_high_star_repo(self):
-        """Test that star_tier is correctly assigned for high-star repos."""
+        """Test parsing of high-star repos."""
         row = {
             "id": "1",
             "name": "pandas/pandas",
@@ -70,7 +69,6 @@ class TestParseSearrGhsRepo:
         result = _parse_seart_ghs_repo(row)
 
         assert result["stars"] == 50000
-        assert result["star_tier"] == "core"  # >= 500 stars
 
 
 class TestIsExcluded:

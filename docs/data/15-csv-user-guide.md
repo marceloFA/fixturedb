@@ -80,10 +80,10 @@ head(df)
 | `cyclomatic_complexity` | Integer | complexity | **McCabe cyclomatic complexity** (1 = no branching) | 3 |
 | `cognitive_complexity` | Integer | complexity | **SonarQube cognitive complexity** (nesting-weighted) | 5 |
 | `max_nesting_depth` | Integer | levels | Maximum block nesting (if/for/while/try statements) | 2 |
-| `num_objects_instantiated` | Integer | count | Estimated object creations in fixture | 4 |
-| `num_external_calls` | Integer | count | Estimated I/O/API calls (DB, HTTP, files, env) | 2 |
+| `num_objects_instantiated` | Integer | count | Estimated object creations in fixture (detected via regex patterns; may include false positives) | 4 |
+| `num_external_calls` | Integer | count | Estimated I/O/API calls (DB, HTTP, files, env); heuristic-based with precision limitations | 2 |
 | `num_parameters` | Integer | count | Number of function parameters | 1 |
-| `reuse_count` | Integer | count | How many test functions use this fixture | 12 |
+| `reuse_count` | Integer | count | Number of test functions using this fixture (does not inflate for parametrized tests; see limitations) | 12 |
 
 ### Complexity Metrics Explained
 
@@ -424,8 +424,7 @@ If you use FixtureDB CSVs in your research, cite:
   title={FixtureDB: A Multi-Language Dataset of Test Fixture Definitions},
   author={Almeida, João and Hora, Andre},
   year={2026},
-  publisher={Zenodo},
-  doi={TODO}
+  publisher={Zenodo}
 }
 ```
 

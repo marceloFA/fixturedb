@@ -83,7 +83,7 @@ FixtureDB: A Multi-Language Dataset of Test Fixture Definitions from Open-Source
 João Almeida, Andre Hora  
 *ICSME 2026 — Tool Demonstration and Data Showcase Track*  
 
-Dataset: [![DOI](https://zenodo.org/badge/DOI/TODO.svg)](https://doi.org/TODO)
+(DOI will be assigned upon Zenodo publication)
 
 ## License
 
