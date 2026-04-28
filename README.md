@@ -212,7 +212,7 @@ The following visualizations provide an overview of the FixtureDB corpus:
 
 ### Fixture Type & Scope Distribution
 
-**Detection Patterns and Execution Scopes** ⭐ NEW
+**Detection Patterns and Execution Scopes**
 
 ![Fixture Types by Language](docs/plots/03c_fixture_types.png)
 
@@ -220,7 +220,7 @@ The following visualizations provide an overview of the FixtureDB corpus:
 
 ### Fixture Size & Complexity Analysis
 
-**Lines of Code and Complexity Metrics** ⭐ NEW
+**Lines of Code and Complexity Metrics**
 
 ![Lines of Code Distribution](docs/plots/04c_lines_of_code.png)
 
@@ -228,7 +228,7 @@ The following visualizations provide an overview of the FixtureDB corpus:
 
 ### Framework & Execution Patterns
 
-**Framework-Specific Scope Adoption** ⭐ NEW
+**Framework-Specific Scope Adoption**
 
 ![Framework by Execution Scope](docs/plots/04e_framework_by_scope.png)
 
@@ -248,7 +248,7 @@ The following visualizations provide an overview of the FixtureDB corpus:
 
 ### Test File Organization & Design Patterns
 
-**File Characteristics and Fixture Design** ⭐ NEW
+**File Characteristics and Fixture Design**
 
 ![Test File Characteristics](docs/plots/05g_test_file_characteristics.png)
 
@@ -256,7 +256,7 @@ The following visualizations provide an overview of the FixtureDB corpus:
 
 ### Repository Quality & Maturity
 
-**Project Popularity vs Fixture Quality** ⭐ NEW
+**Project Popularity vs Fixture Quality**
 
 ![Repository Maturity vs Fixture Quality](docs/plots/05i_repo_maturity.png)
 
@@ -266,9 +266,9 @@ Comprehensive exploratory data analysis documentation is available in the follow
 
 | Guide | Purpose |
 |-------|---------|
-| [**EDA_INDEX.md**](EDA_INDEX.md) | **Start here** — Navigation guide for all EDA resources |
+| [EDA_INDEX.md](EDA_INDEX.md) | Navigation guide for all EDA resources |
 | [EDA_COMPLETE_SUMMARY.md](EDA_COMPLETE_SUMMARY.md) | Master reference: all improvements, integrations, and next steps |
-| [EDA_IMPROVEMENTS_2026.md](EDA_IMPROVEMENTS_2026.md) | Detailed descriptions of all 8 new plots (⭐ above) and their design rationale |
+| [EDA_IMPROVEMENTS_2026.md](EDA_IMPROVEMENTS_2026.md) | Detailed descriptions of all 8 new plots and their design rationale |
 | [EDA_QUICK_REFERENCE.md](EDA_QUICK_REFERENCE.md) | Research workflows, CSV column mapping, and which plot to use for what question |
 | [EDA_KEY_INSIGHTS.md](EDA_KEY_INSIGHTS.md) | Data-driven findings: language comparisons, fixture patterns, teardown adoption analysis |
 

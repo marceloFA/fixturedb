@@ -2,22 +2,29 @@
 Export utility — produces the Zenodo-ready dataset artifact.
 
 Generates:
-  export/
-  ├── fixtures.db               (full database)
-  ├── repositories.csv
-  ├── test_files.csv
-  ├── fixtures.csv              (raw_source excluded by default — too large)
-  ├── mock_usages.csv
-  ├── fixtures_with_source.csv  (opt-in, includes raw_source)
-  ├── stats.txt                 (high-level statistics)
-  └── README.txt                (schema and column documentation)
+  export/fixturedb_v<version>_<date>/
+  ├── fixtures.db               (full SQLite database with all tables)
+  ├── repositories.csv          (200 repositories with maturity metrics)
+  ├── test_files.csv            (257,764 test files with fixture counts)
+  ├── fixtures.csv              (35,169 fixtures with metrics and GitHub links)
+  ├── README.txt                (schema and column documentation)
+  └── stats.txt                 (summary statistics by language)
 
-Then zips everything into fixturedb_v<version>.zip.
+Then zips everything into fixturedb_v<version>_<date>.zip.
+
+CSV exports contain:
+  - Quantitative metrics (LOC, complexity, counts, etc.)
+  - Objective classifications (fixture_type, scope, framework)
+  - Context for reproducibility (github_url, pinned_commit, file paths)
+  - Excludes: raw source code (use SQLite for source), subjective categories
+
+Full SQLite database includes all raw source code and internal tables
+for transparency and future research.
 
 Usage:
     python -m scripts.export --version 1.0
     # or
-    python pipeline.py export --version 1.0
+    python pipeline.py export
 """
 
 import shutil
@@ -40,70 +47,92 @@ EXPORT_DIR = ROOT_DIR / "export"
 # ---------------------------------------------------------------------------
 
 SCHEMA_DOCS = """
-FixtureDB — Dataset Schema Documentation
-=========================================
+FixtureDB — Dataset CSV Schema
+==============================
 
-TABLE: repositories
-  id               INTEGER  Internal primary key
-  github_id        INTEGER  GitHub repository numeric ID
-  full_name        TEXT     "owner/repo" slug
-  language         TEXT     python | java | javascript | typescript | go | csharp
-  stars            INTEGER  GitHub star count at collection time
-  forks            INTEGER  GitHub fork count at collection time
-  description      TEXT     GitHub repository description
-  topics           TEXT     JSON array of GitHub topic tags
-  created_at       TEXT     ISO 8601 repository creation date
-  pushed_at        TEXT     ISO 8601 last push date
-  clone_url        TEXT     HTTPS clone URL
-  pinned_commit    TEXT     SHA of the HEAD commit analysed (reproducibility)
-  num_contributors INTEGER  GitHub API: repository contributor count
-  collected_at     TEXT     ISO 8601 timestamp of DB insertion
+This archive contains 3 CSV files plus a SQLite database:
 
-TABLE: test_files
-  id               INTEGER  Internal primary key
-  repo_id          INTEGER  FK → repositories.id
-  relative_path    TEXT     Path relative to repository root
-  language         TEXT     Same as repositories.language
-  num_test_funcs   INTEGER  Number of test function definitions detected
-  num_fixtures     INTEGER  Number of fixture definitions detected
+1. REPOSITORIES.CSV
+   One row per repository (200 total, status='analysed')
+   
+   Columns:
+   - id                    Internal primary key
+   - full_name             Repository slug: "owner/repo"
+   - language              python | java | javascript | typescript
+   - stars                 GitHub star count at collection time
+   - forks                 GitHub fork count at collection time
+   - num_contributors      GitHub contributor count (maturity metric)
+   - num_analyzed_fixtures Total fixtures extracted from this repo
+   - pinned_commit         SHA of analyzed commit (reproducibility)
 
-TABLE: fixtures
-  id                       INTEGER  Internal primary key
-  file_id                  INTEGER  FK → test_files.id
-  repo_id                  INTEGER  FK → repositories.id
-  name                     TEXT     Function/method name of the fixture
-  fixture_type             TEXT     Detection pattern used:
-                                    pytest_decorator | unittest_setup |
-                                    junit5_before_each | junit5_before_all |
-                                    junit4_before | junit4_before_class |
-                                    before_each | before_all | mocha_before |
-                                    nunit_setup | nunit_teardown |
-                                    nunit_onetimesetup | nunit_onetimeteardown |
-                                    xunit_fact | xunit_theory |
-                                    test_main | go_helper
-  scope                    TEXT     per_test | per_class | per_module | global
-  start_line               INTEGER  1-indexed start line in the source file
-  end_line                 INTEGER  1-indexed end line in the source file
-  loc                      INTEGER  Non-blank lines of code
-  cyclomatic_complexity    INTEGER  1 + number of branching statements
-  cognitive_complexity     INTEGER  Nesting-depth-weighted code complexity
-  num_objects_instantiated INTEGER  Estimated constructor calls
-  num_external_calls       INTEGER  Estimated I/O / external API calls
-  num_parameters           INTEGER  Number of function parameters
-  raw_source               TEXT     Full source text (excluded from CSV export)
-  category                 TEXT     Fixture taxonomy (internal analysis only; excluded from CSV export — subjective)
+2. TEST_FILES.CSV
+   One row per test file (257,764 total)
+   
+   Columns:
+   - id                    Internal primary key
+   - repo                  Repository full_name for human readability
+   - language              python | java | javascript | typescript
+   - relative_path         Path relative to repository root
+   - file_loc              Non-blank lines of code in test file
+   - num_test_funcs        Count of test function definitions
+   - num_fixtures          Count of fixture definitions in this file
+   - total_fixture_loc     Sum of LOC across all fixtures in file
 
-TABLE: mock_usages
-  id                           INTEGER  Internal primary key
-  fixture_id                   INTEGER  FK → fixtures.id
-  repo_id                      INTEGER  FK → repositories.id
-  framework                    TEXT     unittest_mock | pytest_mock | mockito |
-                                        easymock | jest | sinon | vitest |
-                                        gomock | testify_mock | moq |
-                                        nsubstitute | fakeiteasy | rhino_mocks
-  target_identifier            TEXT     String passed to the mock call
-  num_interactions_configured  INTEGER  return_value / thenReturn calls counted
-  raw_snippet                  TEXT     Short source snippet (excluded from CSV export — GitHub URL provides access)
+3. FIXTURES.CSV
+   One row per fixture definition (35,169 total)
+   
+   Columns (grouped by category):
+   
+   Context:
+   - id                    Internal primary key
+   - language              python | java | javascript | typescript
+   - repo                  Repository full_name for human readability
+   - file_path             Path relative to repository root
+   - name                  Function/method name of the fixture
+   
+   Fixture Classification:
+   - fixture_type          Detection pattern: pytest_decorator, unittest_setup,
+                           junit4_before, junit5_before_each, before_each, etc.
+   - framework             Testing framework: pytest, unittest, jest, mocha, junit, etc.
+   - scope                 per_test | per_class | per_module | global
+   
+   Location & Size:
+   - start_line            1-indexed start line in source file
+   - end_line              1-indexed end line in source file
+   - loc                   Non-blank lines of code
+   
+   Complexity:
+   - cyclomatic_complexity 1 + number of branching statements (McCabe)
+   - cognitive_complexity  Nesting-depth-weighted complexity
+   - max_nesting_depth     Maximum block nesting level
+   
+   Dependencies & Structure:
+   - num_parameters        Number of function parameters
+   - num_objects_instantiated Estimated constructor calls inside fixture
+   - num_external_calls    Estimated I/O / external API calls
+   
+   Reuse & Cleanup:
+   - reuse_count           Number of test functions using this fixture
+   - has_teardown_pair     Binary (0/1): fixture includes cleanup/teardown logic
+   
+   Reproducibility:
+   - pinned_commit         SHA of analyzed commit (enables exact code reproduction)
+   - github_url            Direct link to fixture on GitHub (click to view source)
+
+FULL DATABASE
+=============
+For detailed analysis, use fixtures.db (SQLite 3):
+  import sqlite3
+  conn = sqlite3.connect("fixtures.db")
+  df = pd.read_sql("SELECT * FROM fixtures", conn)
+
+The database includes additional infrastructure columns (raw_source, category)
+not exported to CSV. See database schema documentation for details.
+
+LICENSES
+========
+Dataset: CC BY 4.0  (https://creativecommons.org/licenses/by/4.0/)
+Source code: MIT
 """
 
 
@@ -328,22 +357,45 @@ Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d')}
 A multi-language dataset of test fixture definitions extracted from
 open-source software repositories on GitHub.
 
-CITATION
---------
-TODO: Add paper citation once published.
+Dataset includes 35,169 fixtures from 200 repositories across 4 languages
+(Python, Java, JavaScript, TypeScript) with structural metrics and mock
+framework usage patterns.
 
-ACCESS
-------
-  Full database:  fixtures.db  (SQLite 3)
-  Tables as CSV:  repositories.csv, test_files.csv,
-                  fixtures.csv, mock_usages.csv
+For paper, documentation, and usage examples:
+  https://github.com/joao-almeida/icsme-nier-2026
+
+CONTENTS
+--------
+  repositories.csv    200 repositories with maturity metrics
+  test_files.csv      257,764 test files with fixture counts
+  fixtures.csv        35,169 fixtures with metrics and GitHub links
+  fixtures.db         Full SQLite database (includes raw source code)
+  stats.txt           Summary statistics by language
 
 QUICK START (Python)
 --------------------
-  import sqlite3, pandas as pd
+  import pandas as pd
+  
+  # Load CSV
+  df_fixtures = pd.read_csv("fixtures.csv")
+  df_repos = pd.read_csv("repositories.csv")
+  
+  # Or use SQLite database for full access
+  import sqlite3
   conn = sqlite3.connect("fixtures.db")
   df = pd.read_sql("SELECT * FROM fixtures", conn)
 
+COLUMN REFERENCE
+----------------
+See sections below for detailed CSV schema documentation.
+
+CITATION
+--------
+If using this dataset, cite:
+  FixtureDB: A Multi-Language Dataset of Test Fixture Definitions
+  João Almeida, Andre Hora
+  ICSME 2026, Tool Demonstration and Data Showcase Track
+  
 LICENSE
 -------
   Dataset: CC BY 4.0  (https://creativecommons.org/licenses/by/4.0/)
@@ -357,7 +409,30 @@ def _write_stats(conn, path: Path) -> None:
     """Write a human-readable stats summary (useful for the paper's Table 1)."""
     conn2 = sqlite3.connect(DB_PATH)
     conn2.row_factory = sqlite3.Row
-    lines = ["FixtureDB — Corpus Statistics\n", "=" * 40 + "\n\n"]
+    lines = [
+        "FixtureDB — Corpus Statistics\n",
+        "=" * 50 + "\n\n",
+        "SUMMARY\n",
+        "-" * 50 + "\n",
+    ]
+
+    # Overall stats
+    total_repos = conn2.execute(
+        "SELECT COUNT(*) n FROM repositories WHERE status='analysed'"
+    ).fetchone()["n"]
+    total_fixtures = conn2.execute("SELECT COUNT(*) n FROM fixtures").fetchone()["n"]
+    total_test_files = conn2.execute("SELECT COUNT(*) n FROM test_files").fetchone()["n"]
+
+    lines.append(f"Total repositories:     {total_repos:,}\n")
+    lines.append(f"Total test files:       {total_test_files:,}\n")
+    lines.append(f"Total fixtures:         {total_fixtures:,}\n")
+    lines.append("\n")
+
+    # Per-language breakdown
+    lines.append("BY LANGUAGE\n")
+    lines.append("-" * 50 + "\n")
+    lines.append(f"{'Language':<15} {'Repos':<8} {'Test Files':<12} {'Fixtures':<10}\n")
+    lines.append("-" * 50 + "\n")
 
     for lang in ("python", "java", "javascript", "typescript"):
         r = conn2.execute(
@@ -374,15 +449,7 @@ def _write_stats(conn, path: Path) -> None:
             "JOIN repositories r ON f.repo_id=r.id WHERE r.language=?",
             (lang,),
         ).fetchone()["n"]
-        mk = conn2.execute(
-            "SELECT COUNT(*) n FROM mock_usages m "
-            "JOIN repositories r ON m.repo_id=r.id WHERE r.language=?",
-            (lang,),
-        ).fetchone()["n"]
-        lines.append(
-            f"{lang:12s}  repos={r:4d}  test_files={tf:6d}  "
-            f"fixtures={fx:7d}  mocks={mk:6d}\n"
-        )
+        lines.append(f"{lang:<15} {r:<8} {tf:<12} {fx:<10}\n")
 
     conn2.close()
     path.write_text("".join(lines), encoding="utf-8")
