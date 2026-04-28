@@ -661,9 +661,9 @@ For consistency with file-level metrics, consider migrating to Lizard's LOC defi
   - ~5% have 6+ mocks
 
 **Data Export Policy:**
-- ✓ **Included in `fixtures.csv`** — Objective, reproducible, quantitative metric
-- ✓ **Stored in SQLite** — Full mock_usages table with detailed breakdown
-- ✓ **Queryable** — Researchers can join fixtures → mock_usages for detailed analysis
+- ✗ **Not in `fixtures.csv`** — Mock analysis available via SQLite database for advanced researchers
+- ✓ **Stored in SQLite** — Full `mock_usages` table with detailed framework breakdown by fixture
+- ✓ **Queryable** — Researchers can join `fixtures → mock_usages` for detailed mock adoption analysis
 
 ---
 

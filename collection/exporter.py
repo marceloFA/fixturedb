@@ -132,40 +132,34 @@ def export_dataset(version: str = "1.0", include_raw_source: bool = False) -> Pa
     logger.info(f"Copied database → {dest_db}")
 
     # --- CSV exports ---
-    # repositories: exclude internal tracking fields (status, domain, error_message, skip_reason)
-    _export_table(
+    # repositories: with adoption metrics (stars, forks, num_contributors) and analysis counts
+    _export_repositories(
         conn,
-        "repositories",
         staging / "repositories.csv",
-        exclude_cols=["status", "domain", "error_message", "skip_reason"],
     )
-    _export_table(conn, "test_files", staging / "test_files.csv")
-    # mock_usages: exclude classification fields (subjective) and raw_snippet (redundant with GitHub URL)
-    _export_table(
+    # test_files: with repo context for researchers
+    _export_test_files(
         conn,
-        "mock_usages",
-        staging / "mock_usages.csv",
-        exclude_cols=["raw_snippet"],
+        staging / "test_files.csv",
     )
+    # mock_usages: skip for now (not needed for Zenodo yet)
+    # Will be added in future releases once validation is complete
 
-    # fixtures: exclude category, has_teardown_pair, and fixture_type by default
-    # category: subjective fixture classification, for internal analysis only
-    # has_teardown_pair: qualitative cleanup indicator, internal analysis only
-    # fixture_type: qualitative/categorical classification (how fixture detected), not quantitative metric
-    # raw_source: included for reproducibility (actual fixture source code)
+    # fixtures: with github_url, fixture_type, and context (language, repo, file_path)
+    # Excluded: category (subjective classification)
+    # Included: fixture_type (quantitative detection method), has_teardown_pair (binary indicator)
+    # Included: raw_source only if include_raw_source=True
     if include_raw_source:
-        _export_table(
+        _export_fixtures_with_url(
             conn,
-            "fixtures",
             staging / "fixtures_with_source.csv",
-            exclude_cols=["category", "has_teardown_pair", "fixture_type"],
+            include_raw_source=True,
         )
     else:
-        _export_table(
+        _export_fixtures_with_url(
             conn,
-            "fixtures",
             staging / "fixtures.csv",
-            exclude_cols=["category", "has_teardown_pair", "fixture_type"],
+            include_raw_source=False,
         )
 
     conn.close()
@@ -197,6 +191,131 @@ def _export_table(
         df = df.drop(columns=[c for c in exclude_cols if c in df.columns])
     df.to_csv(dest, index=False)
     logger.info(f"  {table}: {len(df):,} rows → {dest.name}")
+
+
+def _export_repositories(
+    conn: sqlite3.Connection,
+    dest: Path,
+) -> None:
+    """Export repositories with adoption and maturity metrics.
+    
+    Columns (in order):
+      - Identifiers: id, github_id, full_name
+      - Context: language
+      - GitHub Metrics: stars, forks, num_contributors
+      - Collection: created_at, pushed_at, pinned_commit
+      - Dataset Info: num_test_files, num_fixtures, num_analyzed_fixtures, collected_at
+    """
+    query = """
+    SELECT
+        id,
+        github_id,
+        full_name,
+        language,
+        stars,
+        forks,
+        num_contributors,
+        created_at,
+        pushed_at,
+        pinned_commit,
+        num_test_files,
+        num_fixtures,
+        (SELECT COUNT(*) FROM fixtures WHERE repo_id = repositories.id) AS num_analyzed_fixtures,
+        collected_at
+    FROM repositories
+    WHERE status = 'analysed'
+    ORDER BY id
+    """
+    df = pd.read_sql(query, conn)
+    df.to_csv(dest, index=False)
+    logger.info(f"  repositories: {len(df):,} rows → {dest.name}")
+
+
+def _export_test_files(
+    conn: sqlite3.Connection,
+    dest: Path,
+) -> None:
+    """Export test files with repository context.
+    
+    Columns (in order):
+      - Identifiers: id
+      - Context: repo (full_name), language, relative_path
+      - Metrics: file_loc (file lines of code), num_test_funcs, num_fixtures, total_fixture_loc
+    """
+    query = """
+    SELECT
+        tf.id,
+        r.full_name AS repo,
+        tf.language,
+        tf.relative_path,
+        tf.file_loc,
+        tf.num_test_funcs,
+        tf.num_fixtures,
+        tf.total_fixture_loc
+    FROM test_files tf
+    JOIN repositories r ON tf.repo_id = r.id
+    ORDER BY tf.id
+    """
+    df = pd.read_sql(query, conn)
+    df.to_csv(dest, index=False)
+    logger.info(f"  test_files: {len(df):,} rows → {dest.name}")
+
+
+def _export_fixtures_with_url(
+    conn: sqlite3.Connection,
+    dest: Path,
+    include_raw_source: bool = False,
+) -> None:
+    """Export fixtures with computed github_url and context.
+    
+    Columns (in order):
+      - Identifiers: id
+      - Context: language, repo, file_path, name
+      - Characteristics: fixture_type, framework, scope
+      - Location: start_line, end_line
+      - Structure: loc (lines of code)
+      - Complexity: cyclomatic_complexity, cognitive_complexity, max_nesting_depth
+      - Behavior: num_parameters, num_objects_instantiated, num_external_calls
+      - Reuse: reuse_count, has_teardown_pair
+      - Reproducibility: pinned_commit, github_url
+    """
+    query = """
+    SELECT
+        f.id,
+        r.language,
+        r.full_name AS repo,
+        tf.relative_path AS file_path,
+        f.name,
+        f.fixture_type,
+        f.framework,
+        f.scope,
+        f.start_line,
+        f.end_line,
+        f.loc,
+        f.cyclomatic_complexity,
+        f.cognitive_complexity,
+        f.max_nesting_depth,
+        f.num_parameters,
+        f.num_objects_instantiated,
+        f.num_external_calls,
+        f.reuse_count,
+        f.has_teardown_pair,
+        r.pinned_commit,
+        (CASE
+            WHEN r.clone_url LIKE '%.git' 
+            THEN SUBSTR(r.clone_url, 1, LENGTH(r.clone_url) - 4)
+            ELSE r.clone_url
+        END || '/blob/' || r.pinned_commit || '/' || tf.relative_path || '#L' || f.start_line) AS github_url
+        """ + (", f.raw_source" if include_raw_source else "") + """
+    FROM fixtures f
+    JOIN repositories r ON f.repo_id = r.id
+    JOIN test_files tf ON f.file_id = tf.id
+    ORDER BY f.id
+    """
+    
+    df = pd.read_sql(query, conn)
+    df.to_csv(dest, index=False)
+    logger.info(f"  fixtures: {len(df):,} rows → {dest.name}")
 
 
 

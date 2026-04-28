@@ -13,31 +13,30 @@ export/fixturedb_v<version>_<date>/
 ├── fixtures.db                (full database with all fields)
 ├── repositories.csv
 ├── test_files.csv
-├── fixtures.csv               (raw_source excluded; use SQLite for full source)
-├── mock_usages.csv
+├── fixtures.csv               (raw_source excluded by default; use --include-source for full source)
 ├── stats.txt                  (summary statistics)
 └── README.txt                 (schema documentation)
 ```
 
 ## 1. repositories.csv
 
-One row per repository discovered during GitHub search.
+One row per repository with at least one analyzed fixture (status='analysed').
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | INT | Internal primary key |
 | `github_id` | INT | GitHub repository numeric ID |
 | `full_name` | TEXT | Repository slug (e.g., "pytest-dev/pytest") |
-| `language` | TEXT | Primary language (python, java, javascript, typescript, csharp) |
-| `stars` | INT | Star count at collection time |
-| `forks` | INT | Fork count at collection time |
-| `description` | TEXT | GitHub repository description |
-| `topics` | TEXT | JSON array of GitHub topic tags |
+| `language` | TEXT | Primary language (python, java, javascript, typescript) |
+| `stars` | INT | Star count at collection time (GitHub maturity metric) |
+| `forks` | INT | Fork count at collection time (adoption metric) |
+| `num_contributors` | INT | GitHub contributor count (project maturity) |
 | `created_at` | TEXT | ISO 8601 repository creation date |
 | `pushed_at` | TEXT | ISO 8601 last push date |
-| `clone_url` | TEXT | HTTPS clone URL used for local cloning |
 | `pinned_commit` | TEXT | SHA of HEAD commit at analysis time (for reproducibility) |
-| `num_contributors` | INT | GitHub contributor count |
+| `num_test_files` | INT | Total test files found in repository |
+| `num_fixtures` | INT | Total fixture definitions in repository |
+| `num_analyzed_fixtures` | INT | Fixture definitions extracted and analyzed (matches fixtures.csv count for this repo) |
 | `collected_at` | TEXT | ISO 8601 timestamp of DB insertion |
 
 ## 2. test_files.csv
@@ -47,75 +46,59 @@ One row per test file found during repository analysis.
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | INT | Internal primary key |
-| `repo_id` | INT | FK → repositories.id |
+| `repo` | TEXT | Repository full_name (e.g., "owner/repo") — human-readable context |
+| `language` | TEXT | Source language (python, java, javascript, typescript) |
 | `relative_path` | TEXT | Path relative to repository root |
-| `language` | TEXT | Source language (same as parent repo) |
 | `file_loc` | INT | Non-blank lines of code in test file |
 | `num_test_funcs` | INT | Count of test function definitions detected |
 | `num_fixtures` | INT | Count of fixture definitions in this file |
-| `total_fixture_loc` | INT | Sum of LOC across all fixtures in this file |
+| `total_fixture_loc` | INT | Sum of lines of code across all fixtures in this file |
 
 ## 3. fixtures.csv
 
 One row per fixture definition found during extraction.
 
-**Excluded columns:** `category`, `fixture_type` (see [Excluded Columns](#excluded-columns-database-only) table above)
-
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | INT | Internal primary key |
-| `file_id` | INT | FK → test_files.id |
-| `repo_id` | INT | FK → repositories.id |
+| `language` | TEXT | Programming language (python, java, javascript, typescript) |
+| `repo` | TEXT | Repository full_name (e.g., "owner/repo") — human-readable context |
+| `file_path` | TEXT | Relative path to test file |
 | `name` | TEXT | Function/method name of the fixture |
+| `fixture_type` | TEXT | Detection pattern (pytest_decorator, unittest_setup, before_each, etc.) — quantitative classification |
+| `framework` | TEXT | Detected testing framework (pytest, unittest, jest, mocha, junit4, etc.) |
 | `scope` | TEXT | Execution scope (per_test, per_class, per_module, global) |
 | `start_line` | INT | 1-indexed start line in source file |
 | `end_line` | INT | 1-indexed end line in source file |
-| `loc` | INT | Non-blank lines of code |
+| `loc` | INT | Non-blank lines of code in fixture |
 | `cyclomatic_complexity` | INT | McCabe complexity: 1 + number of branching statements |
 | `cognitive_complexity` | INT | Nesting-depth-weighted complexity (higher = harder to understand) |
 | `max_nesting_depth` | INT | Maximum block nesting level |
-| `num_objects_instantiated` | INT | Estimated constructor calls inside fixture (detected via regex; see limitations) |
-| `num_external_calls` | INT | Estimated I/O / external API calls (DB, HTTP, filesystem, env); see limitations for accuracy notes |
 | `num_parameters` | INT | Number of function parameters |
+| `num_objects_instantiated` | INT | Estimated constructor calls inside fixture (detected via regex; see limitations) |
+| `num_external_calls` | INT | Estimated I/O / external API calls (DB, HTTP, filesystem, env); see limitations |
 | `reuse_count` | INT | Number of test functions using this fixture |
-| `num_mocks` | INT | Count of distinct mock usages within this fixture (0 if no mocks detected) |
-| `framework` | TEXT | Detected testing framework (pytest, unittest, junit, nunit, testify, etc.) |
-| `raw_source` | TEXT | Complete source code of the fixture (for reproducibility and verification) |
-
-## 4. mock_usages.csv
-
-One row per mock call detected inside a fixture.
-
-**Excluded columns:** `raw_snippet` (see [Excluded Columns](#excluded-columns-database-only) table above)
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | INT | Internal primary key |
-| `fixture_id` | INT | FK → fixtures.id |
-| `repo_id` | INT | FK → repositories.id |
-| `framework` | TEXT | Detected mock framework (unittest_mock, pytest_mock, mockito, jest, sinon, moq, etc.) |
-| `target_identifier` | TEXT | String passed to the mock call (e.g., "mymodule.HttpClient") |
-| `num_interactions_configured` | INT | Count of return_value / thenReturn / side_effect style calls |
+| `has_teardown_pair` | INT | Binary indicator (0/1): whether fixture includes cleanup/teardown logic |
+| `pinned_commit` | TEXT | SHA of analyzed commit (for reproducibility) |
+| `github_url` | TEXT | Direct GitHub link to fixture source code (click to view in browser) |
 
 ## Design Rationale
 
 ### CSV Export Strategy
 
-The public CSV exports contain **quantitative metrics only** for this dataset. The full SQLite database includes additional infrastructure columns for reproducibility and future research, but these are intentionally excluded from CSV exports:
+The public CSV exports contain **quantitative metrics only** for this dataset. The full SQLite database includes additional infrastructure columns for reproducibility and detailed mock framework analysis, but these are intentionally excluded from CSV exports:
 
 **Internal-only fields (excluded from CSV):**
 - `category` (fixture) — Internal fixture classification infrastructure; enables future taxonomy work
-
-**Source code (excluded from CSV):**
-- `raw_source` (fixture) — Full source text is bulky; available in SQLite for researchers who need it
-- `raw_snippet` (mock usage) — Code snippet redundant with github_url pointing to exact location
+- `mock_usages` table (fixture framework analysis) — Detailed mock framework counts and interactions; available in SQLite database for researchers who need it
 
 ### Design principles
 
-1. **Quantitative focus:** CSV exports contain only measurable, objective facts (LOC, counts, metrics)
-2. **Reproducible:** Full SQLite database available for verification of extraction decisions
-3. **Traceable:** github_url enables verification of any finding directly in source code
-4. **Archivable:** Zenodo deposit includes both SQLite (for transparency and future research) and CSV (for paper analysis)
+1. **Quantitative focus:** CSV exports contain only measurable, objective facts (LOC, counts, metrics, detection patterns)
+2. **Context-rich:** Human-readable columns (repo, file_path, github_url) enable standalone analysis without database joins
+3. **Reproducible:** Full SQLite database available for verification of extraction decisions
+4. **Traceable:** github_url enables verification of any finding directly in source code on GitHub
+5. **Archivable:** Zenodo deposit includes both SQLite (for transparency and future research) and CSV (for paper analysis and public sharing)
 
 ## See Also
 

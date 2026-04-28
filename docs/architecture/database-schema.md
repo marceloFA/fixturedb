@@ -6,10 +6,10 @@ FixtureDB provides data in two formats optimized for different use cases:
 
 | Aspect | **SQLite** (`fixtures.db`) | **CSV Exports** |
 |--------|--------|---------|
-| **Purpose** | Complete reproducible dataset with all fields | Curated quantitative metrics for analysis |
-| **Tables** | 4 normalized (repositories, test_files, fixtures, mock_usages) | 5 denormalized CSVs (fixtures, mock_usages, repositories, test_files) + language-specific variants |
-| **Includes** | Raw source, internal classifications, error logs | Quantitative metrics only (no raw_source, categories, classifications) |
-| **Best for** | Verification, reproducibility, source inspection | Paper analysis, spreadsheet workflows, pandas/R |
+| **Purpose** | Complete reproducible dataset with all fields | Quantitative metrics with context for analysis |
+| **Tables** | 4 normalized (repositories, test_files, fixtures, mock_usages) | 3 CSV files (fixtures, repositories, test_files) |
+| **Includes** | Raw source, internal classifications, error logs, mock framework details | Quantitative metrics only (no raw_source, categories, classifications) |
+| **Best for** | Verification, reproducibility, source inspection, detailed mock analysis | Paper analysis, spreadsheet workflows, pandas/R |
 
 ---
 
@@ -19,12 +19,12 @@ FixtureDB provides data in two formats optimized for different use cases:
 
 ### Table Overview
 
-| Table | Rows | Relationship | Columns |
+| Table | Rows (toy) | Relationship | Key Columns |
 |-------|------|--------------|---------|
-| `repositories` | 160 | Root | github_id, full_name, language, stars, forks, domain, status, pinned_commit, num_test_files, num_fixtures, num_mock_usages |
-| `test_files` | ~228K | FK → repositories.id | repo_id, relative_path, language, file_loc, num_fixtures, total_fixture_loc |
-| `fixtures` | ~40.7K | FK → test_files.id, repo_id | file_id, name, fixture_type, scope, loc, cyclomatic_complexity, cognitive_complexity, max_nesting_depth, num_objects_instantiated, num_external_calls, num_parameters, reuse_count, has_teardown_pair, raw_source, category, framework |
-| `mock_usages` | ~12.8K | FK → fixtures.id, repo_id | fixture_id, framework, mock_style, target_identifier, target_layer, num_interactions_configured, raw_snippet |
+| `repositories` | 200 | Root | full_name, language, stars, forks, pinned_commit, status, num_test_files, num_fixtures, num_contributors |
+| `test_files` | 257,764 | FK → repositories.id | repo_id, relative_path, language, file_loc, num_fixtures, total_fixture_loc |
+| `fixtures` | 35,169 | FK → test_files.id, repo_id | name, fixture_type, scope, loc, cyclomatic_complexity, cognitive_complexity, num_parameters, reuse_count, has_teardown_pair |
+| `mock_usages` | ~18K | FK → fixtures.id | fixture_id, framework, mock_style, target_identifier |
 
 **Entity Relationship:**
 ```
@@ -33,21 +33,26 @@ repositories (1) ──< test_files (1) ──< fixtures (1) ──< mock_usages
       └──────────────── repo_id ─────────────┘  (denormalized FK)
 ```
 
-### Key Columns for Analysis
+### Key Columns for CSV Export
 
 **fixtures table (primary analysis table):**
 - **structure:** `loc`, `cyclomatic_complexity` (via Lizard), `cognitive_complexity` (via complexipy)
 - **design:** `scope`, `num_parameters`, `reuse_count`, `has_teardown_pair`
-- **context:** `fixture_type`, `framework`, `name`
-- **internal (excluded from CSV):** `raw_source`, `category`, `max_nesting_depth`, `num_objects_instantiated`, `num_external_calls`
+- **detection:** `fixture_type`, `framework`, `name`
+- **context:** Via SQL join: `language`, `repo` (full_name), `file_path`
+- **reproducibility:** Via SQL join: `pinned_commit`, `github_url`
 
-**mock_usages table:**
+**repositories table (exported for context):**
+- **identification:** `github_id`, `full_name`, `language`
+- **metrics:** `stars`, `forks`, `num_contributors`
+- **dates:** `created_at`, `pushed_at`, `pinned_commit`, `collected_at`
+- **counts:** `num_test_files`, `num_fixtures`, `num_analyzed_fixtures`
+
+**mock_usages table (database only - not exported to CSV):**
 - `framework` (detection pattern: unittest_mock, pytest_mock, mockito, jest, sinon, etc.)
 - `target_identifier` (string passed to mock call)
 - `num_interactions_configured` (behavior configuration count)
-- **internal (excluded from CSV):** `mock_style`, `target_layer`, `raw_snippet`
-
-**Metric Details:** See [Metrics Reference](metrics-reference.md) for calculation methodology and tool documentation.
+- Available in SQLite for researchers who need detailed mock analysis
 
 ---
 
@@ -58,41 +63,37 @@ repositories (1) ──< test_files (1) ──< fixtures (1) ──< mock_usages
 ```
 export/fixturedb_v<version>_<date>/
 ├── fixtures.db                      ← SQLite database
-├── fixtures.csv                     ← All fixtures, all languages
-├── fixtures_python.csv              ← Python only (~4.9K rows)
-├── fixtures_java.csv                ← Java only (~11.2K rows)
-├── fixtures_javascript.csv          ← JavaScript only (~5.5K rows)
-├── fixtures_typescript.csv          ← TypeScript only (~19K rows)
-├── mock_usages.csv                  ← All mock calls (~12.8K rows)
-├── repositories.csv                 ← Repository metadata (160 rows)
-├── test_files.csv                   ← Test files analyzed (~228K rows)
+├── fixtures.csv                     ← All fixtures, all languages (~35K rows)
+├── repositories.csv                 ← Repository metadata (200 rows)
+├── test_files.csv                   ← Test files analyzed (~257K rows)
 └── README.txt
 ```
 
-### What's Excluded
+### What's Excluded from CSV
 
-**Never exported to CSV:** `raw_source`, `category`, `mock_style`, `target_layer`, `raw_snippet`  
-(Use SQLite database if you need to inspect original code or internal classifications)
+**Never exported:** `raw_source`, `category`, `mock_style`, `target_layer`, `raw_snippet`, `mock_usages table`  
+(Use SQLite database if you need to inspect original code, internal classifications, or detailed mock framework analysis)
 
-### Key Tables
+### CSV Export Columns
 
-**fixtures.csv** — Main analysis table; one row per fixture
-- **ID columns:** id, repo_id, file_id
-- **Description:** name, fixture_type, scope, language, framework
-- **Structure metrics:** loc, cyclomatic_complexity, cognitive_complexity, max_nesting_depth
-- **Design metrics:** num_objects_instantiated, num_external_calls, num_parameters, reuse_count, has_teardown_pair
-- **Context:** repo_full_name, stars, domain
+**fixtures.csv** — Main analysis table; one row per fixture (all languages)
+- **Identification:** id, language
+- **Context:** repo (full_name), file_path, name  
+- **Classification:** fixture_type, framework, scope
+- **Location:** start_line, end_line
+- **Structure:** loc
+- **Complexity:** cyclomatic_complexity, cognitive_complexity, max_nesting_depth
+- **Design:** num_parameters, num_objects_instantiated, num_external_calls, reuse_count, has_teardown_pair
+- **Reproducibility:** pinned_commit, github_url
 
-**mock_usages.csv** — One row per mock framework call; join to fixtures.csv via fixture_id
-- **ID columns:** id, fixture_id, repo_id
-- **Detection:** framework, target_identifier, num_interactions_configured
+**repositories.csv** — Repository metadata; one row per analyzed repository
+- **Identification:** id, github_id, full_name, language
+- **Metrics:** stars, forks, num_contributors
+- **Dates:** created_at, pushed_at, pinned_commit
+- **Counts:** num_test_files, num_fixtures, num_analyzed_fixtures, collected_at
 
-**repositories.csv** — One row per analyzed repository
-- **Metadata:** full_name, language, stars, forks, created_at, pushed_at, domain
-- **Counts:** num_test_files, num_fixtures, num_mock_usages, num_contributors
-
-**test_files.csv** — One row per test file analyzed
-- **Path:** relative_path, language
+**test_files.csv** — Test file metadata; one row per test file analyzed
+- **Path:** repo (full_name), language, relative_path
 - **Metrics:** file_loc, num_test_funcs, num_fixtures, total_fixture_loc
 
 ---

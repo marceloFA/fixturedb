@@ -8,16 +8,15 @@
 
 ```
 fixturedb_export/
-├── fixtures.csv                    ← Main table: 1 row per fixture (40.7K)
-├── fixtures_python.csv             ← Python only (4.9K)
-├── fixtures_java.csv               ← Java only (11.2K)
-├── fixtures_javascript.csv         ← JavaScript only (5.5K)
-├── fixtures_typescript.csv         ← TypeScript only (19K)
-├── mock_usages.csv                 ← 1 row per mock call (12.8K)
-├── repositories.csv                ← Repository metadata (160)
-├── test_files.csv                  ← Test file listing (228K)
-└── README.txt
+├── fixtures.csv                    ← Main table: 1 row per fixture (35.2K in toy dataset)
+├── repositories.csv                ← Repository metadata (200 in toy dataset)
+├── test_files.csv                  ← Test file listing (257.8K in toy dataset)
+├── fixtures.db                     ← Full SQLite database (optional for advanced queries)
+├── stats.txt                       ← Summary statistics
+└── README.txt                      ← Schema documentation
 ```
+
+**Note:** CSV files contain quantitative metrics only. For detailed mock framework analysis or raw source code inspection, use the included SQLite database (`fixtures.db`).
 
 ---
 
@@ -36,44 +35,33 @@ fixturedb_export/
 
 | Column | Type | Meaning |
 |--------|------|---------|
-| **IDs** | | |
+| **Identifiers** | | |
 | `id` | Integer | Fixture ID (primary key) |
-| `repo_id` | Integer | Repository ID |
-| `file_id` | Integer | Test file ID |
-| **Description** | | |
-| `name` | Text | Fixture function name |
+| **Context** | | |
 | `language` | Text | `python`, `java`, `javascript`, `typescript` |
-| `fixture_type` | Text | Detection pattern (e.g., `pytest_decorator`, `junit5_before_each`) |
-| `scope` | Text | `per_test`, `per_class`, `per_module`, `global` |
-| `framework` | Text | Testing framework (pytest, unittest, jest, etc.) |
+| `repo` | Text | Repository (e.g., `owner/repo`) |
+| `file_path` | Text | Test file path |
+| `name` | Text | Fixture function name |
+| **Characteristics** | | |
+| `fixture_type` | Text | Detection pattern (`pytest_decorator`, `unittest_setup`, `before_each`, etc.) |
+| `framework` | Text | Testing framework (pytest, unittest, jest, mocha, junit4, etc.) |
+| `scope` | Text | Execution scope: `per_test`, `per_class`, `per_module`, `global` |
 | **Location** | | |
-| `start_line`, `end_line` | Integer | Line numbers in source |
+| `start_line`, `end_line` | Integer | Line numbers in source file |
 | `loc` | Integer | Lines of code |
 | **Complexity** | | |
 | `cyclomatic_complexity` | Integer | McCabe complexity (1 = simple, 10+ = very complex) |
 | `cognitive_complexity` | Integer | SonarQube-standard cognitive complexity (nesting-weighted) |
 | `max_nesting_depth` | Integer | Maximum nested block depth |
-| **Design** | | |
+| **Behavior** | | |
 | `num_parameters` | Integer | Function parameters |
 | `num_objects_instantiated` | Integer | Object creations (heuristic) |
 | `num_external_calls` | Integer | I/O and external API calls (heuristic) |
 | `reuse_count` | Integer | Number of tests using this fixture |
-| `has_teardown_pair` | Boolean | Has cleanup logic |
-
----
-
-## Mock Usages Table
-
-| Column | Meaning |
-|--------|---------|
-| `id` | Mock usage ID |
-| `fixture_id` | Fixture this mock is in (join key) |
-| `repo_id` | Repository ID |
-| `framework` | Mock framework (`unittest_mock`, `mockito`, `jest`, `sinon`, etc.) |
-| `target_identifier` | What's being mocked (e.g., `"mymodule.HttpClient"`) |
-| `num_interactions_configured` | Behavior configurations found (return_value, side_effect, etc.) |
-
-**Usage:** Join to `fixtures.csv` on `fixture_id` to analyze mock patterns by fixture characteristics.
+| `has_teardown_pair` | Integer | Binary (0/1): has cleanup/teardown logic |
+| **Reproducibility** | | |
+| `pinned_commit` | Text | Git SHA of analyzed commit |
+| `github_url` | Text | Direct link to fixture source on GitHub |
 
 ---
 
@@ -81,13 +69,19 @@ fixturedb_export/
 
 | Column | Meaning |
 |--------|---------|
+| `id` | Repository ID |
+| `github_id` | GitHub numeric repository ID |
 | `full_name` | GitHub slug (e.g., `"pytest-dev/pytest"`) |
 | `language` | `python`, `java`, `javascript`, `typescript` |
-| `stars` | Star count at collection time |
-| `domain` | Category: `web`, `data`, `cli`, `infra`, `library`, `other` |
+| `stars` | Star count at collection time (maturity metric) |
+| `forks` | Fork count at collection time (adoption metric) |
+| `num_contributors` | GitHub contributor count (maturity metric) |
+| `created_at`, `pushed_at` | Creation and last push dates (ISO 8601) |
 | `pinned_commit` | Git SHA analyzed (for reproducibility) |
-| `num_fixtures` | Fixtures in repository |
-| `num_mock_usages` | Mock calls in repository |
+| `num_test_files` | Test files found in repository |
+| `num_fixtures` | Fixtures found in repository |
+| `num_analyzed_fixtures` | Fixtures extracted and analyzed (should match count for this repo in fixtures.csv) |
+| `collected_at` | Timestamp of collection (ISO 8601) |
 
 ---
 
@@ -105,29 +99,27 @@ fixturedb_export/
 ## Common Analysis Patterns
 
 **Distribution of complexity by language:**
-```sql
-SELECT language, 
-       ROUND(AVG(cyclomatic_complexity), 1) as avg_cc,
-       COUNT(*) as fixture_count
-FROM fixtures
-GROUP BY language;
+```python
+import pandas as pd
+df = pd.read_csv('fixtures.csv')
+df.groupby('language')['cyclomatic_complexity'].agg(['mean', 'count'])
 ```
 
 **Fixtures with high reuse:**
-```sql
-SELECT name, fixture_type, reuse_count, cyclomatic_complexity
-FROM fixtures
-WHERE reuse_count > 10
-ORDER BY reuse_count DESC;
+```python
+df_high_reuse = df[df['reuse_count'] > 10].sort_values('reuse_count', ascending=False)
+df_high_reuse[['name', 'fixture_type', 'reuse_count', 'cyclomatic_complexity']]
 ```
 
-**Mock frameworks by language:**
-```sql
-SELECT f.language, m.framework, COUNT(*) as count
-FROM mock_usages m
-JOIN fixtures f ON m.fixture_id = f.id
-GROUP BY f.language, m.framework
-ORDER BY f.language, count DESC;
+**Teardown adoption by language:**
+```python
+df.groupby('language')['has_teardown_pair'].agg(['sum', 'count', lambda x: (x.sum()/len(x))*100])
+```
+
+**Test file statistics:**
+```python
+tf = pd.read_csv('test_files.csv')
+tf.groupby('repo')['num_fixtures'].sum().sort_values(ascending=False).head(10)
 ```
 
 ---

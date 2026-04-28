@@ -18,25 +18,26 @@ on Zenodo at **TODO: Zenodo DOI**.
 
 ## Dataset at a Glance
 
-| Metric | Value |
-|--------|-------|
-| **Repositories** | 160 (with ≥1 fixture) |
-| **Fixture Definitions** | ~40,700 |
-| **Mock Framework Usages** | ~12,800 |
-| **Test Files** | ~228,000 |
-| **Languages** | Python (4.9K), Java (11.2K), JavaScript (5.5K), TypeScript (19K) fixtures |
-| **Collection Date** | April 1–2, 2026 |
-| **Database Size** | ~1–3 GB (with raw source) |
-| **CSV Export** | ~100–200 MB (quantitative metrics only) |
+The toy dataset contains fixture definitions extracted from 200 GitHub repositories across 4 programming languages:
 
----
+| Metric | Toy Dataset |
+|--------|-------------|
+| **Total Repositories** | 200 (50 per language) |
+| **Total Test Files** | 257,764 |
+| **Total Fixtures** | 35,169 |
+| **Languages** | Python, Java, JavaScript, TypeScript |
+| **Size (SQLite + CSVs)** | ~175 MB (uncompressed) / 24.5 MB (compressed) |
+| **Export Format** | SQLite database + 3 CSV files (repositories, test_files, fixtures) |
+| **Reproducibility** | Pinned GitHub commits for all repositories |
 
-## Dataset Collection Details
+**Download:** [Latest Zenodo Release](TODO: add Zenodo DOI) — includes full SQLite database and CSV exports for analysis.
+
+### Data Collection Details
 
 | Property | Value |
 |----------|-------|
 | **SEART GitHub Search Extraction** | April 1–2, 2026 |
-| **Repository Selection** | Minimum 500 stars |
+| **Repository Selection** | Quality filters: ≥5 test files, ≥50 commits, ≥500 stars |
 | **Languages** | Python, Java, JavaScript, TypeScript |
 | **GitHub API Version** | v3 REST API |
 | **Required Tools** | See [requirements.txt](requirements.txt) for exact versions |
@@ -209,6 +210,28 @@ The following visualizations provide an overview of the FixtureDB corpus:
 
 ![Mocking Framework Usage](docs/plots/04b_framework_diversity.png)
 
+### Fixture Type & Scope Distribution
+
+**Detection Patterns and Execution Scopes** ⭐ NEW
+
+![Fixture Types by Language](docs/plots/03c_fixture_types.png)
+
+![Fixture Scopes Stacked Distribution](docs/plots/03d_fixture_scopes.png)
+
+### Fixture Size & Complexity Analysis
+
+**Lines of Code and Complexity Metrics** ⭐ NEW
+
+![Lines of Code Distribution](docs/plots/04c_lines_of_code.png)
+
+![Complexity Metrics Comparison](docs/plots/04d_complexity_metrics.png)
+
+### Framework & Execution Patterns
+
+**Framework-Specific Scope Adoption** ⭐ NEW
+
+![Framework by Execution Scope](docs/plots/04e_framework_by_scope.png)
+
 ### Fixture Complexity Analysis
 
 **Nesting, Reuse, and Complexity Patterns**
@@ -222,3 +245,31 @@ The following visualizations provide an overview of the FixtureDB corpus:
 ![Reuse vs Complexity Correlation](docs/plots/05d_reuse_complexity_correlation.png)
 
 ![Teardown Adoption Rate](docs/plots/05e_teardown_adoption.png)
+
+### Test File Organization & Design Patterns
+
+**File Characteristics and Fixture Design** ⭐ NEW
+
+![Test File Characteristics](docs/plots/05g_test_file_characteristics.png)
+
+![Fixture Design Patterns](docs/plots/05h_design_patterns.png)
+
+### Repository Quality & Maturity
+
+**Project Popularity vs Fixture Quality** ⭐ NEW
+
+![Repository Maturity vs Fixture Quality](docs/plots/05i_repo_maturity.png)
+
+## EDA Guides & Data Insights
+
+Comprehensive exploratory data analysis documentation is available in the following guides:
+
+| Guide | Purpose |
+|-------|---------|
+| [**EDA_INDEX.md**](EDA_INDEX.md) | **Start here** — Navigation guide for all EDA resources |
+| [EDA_COMPLETE_SUMMARY.md](EDA_COMPLETE_SUMMARY.md) | Master reference: all improvements, integrations, and next steps |
+| [EDA_IMPROVEMENTS_2026.md](EDA_IMPROVEMENTS_2026.md) | Detailed descriptions of all 8 new plots (⭐ above) and their design rationale |
+| [EDA_QUICK_REFERENCE.md](EDA_QUICK_REFERENCE.md) | Research workflows, CSV column mapping, and which plot to use for what question |
+| [EDA_KEY_INSIGHTS.md](EDA_KEY_INSIGHTS.md) | Data-driven findings: language comparisons, fixture patterns, teardown adoption analysis |
+
+**Quick Start:** Begin with [EDA_INDEX.md](EDA_INDEX.md) for overview and navigation to specific analysis goals.

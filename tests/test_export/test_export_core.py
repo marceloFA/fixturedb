@@ -66,8 +66,10 @@ def temp_db_with_data():
         repo_id INTEGER,
         relative_path TEXT,
         language TEXT,
+        file_loc INTEGER DEFAULT 0,
         num_test_funcs INTEGER DEFAULT 0,
         num_fixtures INTEGER DEFAULT 0,
+        total_fixture_loc INTEGER DEFAULT 0,
         UNIQUE(repo_id, relative_path)
     );
     
@@ -519,7 +521,6 @@ class TestFullExportWorkflow:
                     assert any("repositories.csv" in n for n in names)
                     assert any("test_files.csv" in n for n in names)
                     assert any("fixtures.csv" in n for n in names)
-                    assert any("mock_usages.csv" in n for n in names)
                     assert any("README" in n for n in names)
             finally:
                 monkeypatch.setattr(exporter, "DB_PATH", original_db)

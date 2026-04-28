@@ -9,18 +9,17 @@ GitHub Repositories
         ↓
     Extract Fixtures
         ↓
-  Calculate Counts  ← NEW: num_test_files, num_fixtures, num_mock_usages
+  Calculate Metrics
         ↓
   Store in Database
     (SQLite)
         ↓
     Export Dataset
         ├── fixtures.db (full database)
-        ├── repositories.csv
-        ├── test_files.csv
-        ├── fixtures.csv
-        ├── mock_usages.csv
-        └── fixtures_{language}.csv  ← NEW: language-specific, reader-friendly
+        ├── repositories.csv (with num_analyzed_fixtures)
+        ├── test_files.csv (with repo context)
+        ├── fixtures.csv (with fixture_type, has_teardown_pair, github_url)
+        └── stats.txt
                 ↓
            Zenodo Archive
 ```
@@ -71,28 +70,32 @@ ORDER BY total_fixtures DESC;
 
 ## 4. CSV Export
 
-Export phase generates queryable database (`fixtures.db`) and user-friendly CSVs. See [collection/exporter.py](../../collection/exporter.py) for implementation.
+Export phase generates queryable database (`fixtures.db`) and user-friendly CSVs with human-readable context columns. See [collection/exporter.py](../../collection/exporter.py) for implementation.
 
 **Generated files:**
-- `fixtures.db` — Full SQLite database
-- `repositories.csv`, `test_files.csv`, `fixtures.csv`, `mock_usages.csv` — Main tables
-- `fixtures_{language}.csv` — Language-specific fixture views (python, java, javascript, typescript)
+- `fixtures.db` — Full SQLite database (all internal columns available, including mock_usages table)
+- `repositories.csv` — Repository metadata with maturity metrics (stars, forks, num_contributors) and num_analyzed_fixtures count
+- `test_files.csv` — Test file listing with repo name for context
+- `fixtures.csv` — Fixture definitions with quantitative metrics, fixture_type detection pattern, github_url for direct source access, and has_teardown_pair indicator
+- `stats.txt` — Summary statistics by language
+
+**Note:** Detailed mock framework analysis (`mock_usages` table) is available in SQLite database for researchers who need it; not exported to CSV for Zenodo distribution.
 
 ## 5. Data Flow
 
 ```
 _find_test_files(repo) → num_test_files
     ↓
-extract_fixtures() per file → aggregate to num_fixtures
+extract_fixtures() per file → metrics computed (LOC, complexity, etc.)
     ↓
-extract_mocks() per fixture → aggregate to num_mock_usages
+detect_framework() & extract_mocks() → framework, mock patterns
     ↓
 set_repo_analysed() → UPDATE repositories table
     ↓
-During export: Query database → CSV language-specific views
+During export: Query database with joins → CSV files with context columns
 ```
 
-Counts are computed once at extraction time and stored atomically. CSV exports are derived views with pre-aggregated mock counts.
+Metrics are computed once at extraction time. CSV exports add human-readable context (repo names, file paths, github_urls) via SQL joins during export.
 
 ## 6. Why This Design?
 
