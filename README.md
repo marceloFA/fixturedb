@@ -5,7 +5,7 @@
 
 Replication package for the paper:
 
-> **FixtureDB: A Multi-Language Dataset of Test Fixture Definitions from Open-Source Software**  
+> **FixtureDB: A Multi-Language Dataset of Test Fixture Definitions**
 > João Almeida, Andre Hora  
 > *ICSME 2026 — Tool Demonstration and Data Showcase Track*  
 > TODO: add DOI once published
